@@ -1,0 +1,14 @@
+COMMAND go test -count=1 -run ^$ ./internal/storage ./internal/handler ./internal/views
+# github.com/cristianadrielbraun/gofer/internal/storage
+internal\storage\contact_publication.go:88:23: undefined: contactMoveTombstoneExistsTx
+internal\storage\contact_publication.go:98:22: undefined: activeMoveTargetRemoteTx
+internal\storage\contacts.go:888:24: db.ListProfileContactMoves undefined (type *DB has no field or method ListProfileContactMoves)
+internal\storage\storage.go:1113:13: undefined: migrateV133ToV134
+internal\storage\user_contact_sync.go:433:18: undefined: ActiveContactMoveBlocksBookTx
+internal\storage\user_contact_sync.go:729:22: db.NextContactMoveAttempt undefined (type *DB has no field or method NextContactMoveAttempt)
+FAIL	github.com/cristianadrielbraun/gofer/internal/storage [build failed]
+FAIL	github.com/cristianadrielbraun/gofer/internal/handler [build failed]
+FAIL	github.com/cristianadrielbraun/gofer/internal/views [build failed]
+FAIL
+
+EXIT=1

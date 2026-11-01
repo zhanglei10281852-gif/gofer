@@ -46,6 +46,9 @@ func (h *Handler) processUserContactSyncOperations(ctx context.Context, owner st
 			return processed, errors.Join(append(failures, err)...)
 		}
 		if len(claims) == 0 {
+			// Contact moves ride the same owner-level durable queue; their
+			// deadline is part of NextContactSyncAttempt.
+			h.processDueContactMoves(ctx, owner)
 			return processed, errors.Join(failures...)
 		}
 		workCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
@@ -58,6 +61,7 @@ func (h *Handler) processUserContactSyncOperations(ctx context.Context, owner st
 			return processed + 1, errors.Join(failures...)
 		}
 	}
+	h.processDueContactMoves(ctx, owner)
 	return limit, errors.Join(failures...)
 }
 

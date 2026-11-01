@@ -1,0 +1,4 @@
+COMMAND go test -count=1 ./internal/storage -run ContactSyncMembership|ContactTrash|ContactDelete|ContactProfile -timeout 90s
+ok  	github.com/cristianadrielbraun/gofer/internal/storage	1.751s
+
+EXIT=0

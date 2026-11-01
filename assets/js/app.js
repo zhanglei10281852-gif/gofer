@@ -408,6 +408,22 @@ document.addEventListener("DOMContentLoaded", function () {
         return
       }
 
+      var moveOpen = e.target.closest && e.target.closest("[data-contact-move-open]")
+      if (moveOpen) {
+        e.preventDefault()
+        var moveDialog = document.getElementById(moveOpen.getAttribute("data-contact-move-open"))
+        if (moveDialog && typeof moveDialog.showModal === "function") moveDialog.showModal()
+        return
+      }
+
+      var moveClose = e.target.closest && e.target.closest("[data-contact-move-close]")
+      if (moveClose) {
+        e.preventDefault()
+        var closingDialog = document.getElementById(moveClose.getAttribute("data-contact-move-close"))
+        if (closingDialog && typeof closingDialog.close === "function") closingDialog.close()
+        return
+      }
+
       var editContact = e.target.closest && e.target.closest("[data-contact-edit-trigger]")
       if (editContact) {
         var editDialogID = editContact.getAttribute("data-contact-edit-dialog") || ""

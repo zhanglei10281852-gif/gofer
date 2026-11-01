@@ -1,0 +1,3 @@
+COMMAND go build -o F:\swe\tmp\gofer-review-a66831d6-baseline\baseline-gofer.exe .
+
+EXIT=0

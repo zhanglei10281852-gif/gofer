@@ -1,0 +1,11 @@
+实现审计：当前终止状态
+入口：main.go:18-32 -> RunManaged/RunShared -> internal/server/managed_server.go:145 或 shared_server.go:200 -> user_storage.go:392-394 或 handler.go:508-510。三条移动路由注册存在，其处理方法定义在当前工作树不存在。
+状态所有者：用户 SQLite 的 contact_profiles、contact_cards、contact_sync_memberships；新增 schema.sql 的 contact_move_operations 与 contact_move_tombstones。表存在于SQL源文件，操作实现 contact_moves.go 与迁移实现 contact_move_schema.go 不在工作树。
+外部边界：carddav_contacts.go:1740-1786 提供原有 PUT/DELETE 原语，含 If-Match、If-None-Match、404/410处理与响应体关闭。移动执行器 contact_move.go 不在工作树，入口没有可执行的复制、目标确认、源条件删除路径。
+提交/取消/失败/重试/回滚/返回：新增模型常量和SQL列只描述阶段；负责推进阶段的生产文件缺失。请求在构建阶段被阻断，运行时无移动返回值。编译命令返回1，不产生可启动的新应用。
+同步与资源边界：contact_publication.go:88/98 的入站事务守卫、user_contact_sync.go:433 的扇出守卫均引用未定义函数；contact_sync.go:19/29 与 user_contact_push.go:51/64 调用缺失的移动扫描/执行器。既有同步事务 BeginTx/defer Rollback 与 CardDAV resp.Body.Close 已审计，但不能充当不存在的移动生命周期实现。
+可控失败交错：目标提交中取消、目标确认后源版本变化、源删除后本地提交失败均需要移动执行器；当前工作树没有执行器且 go build 退出1，所以这些场景在运行前均被编译阻断。没有声称已执行任何运行时交错或恢复验证，编译失败本身直接证明核心主路径不可用。
+构造与晚绑定：两套生产入口均引用缺失的方法；不能进入新增状态机构造。服务级准入、并发继续、对象回收与异步副作用顺序在当前交付状态均不存在可执行实现。
+当前证据与同次历史区分：stash 609510bdc83242c12078d7dc748a5126d534e7ef 留有模型中间源码和测试。未恢复、未编译该中间状态，也未把模型自述中的通过当作最终证据。当前模板源码已改而 contacts_templ.go 与登记基线完全相同。
+独立验证：登记基线从唯一SHA归档到临时目录，只做基线对照；go build成功，相同三个包的 go test -count=1 -run ^$ 成功。当前工作树相同包构建与整应用构建均因新增未定义符号失败。基线编译对照不是另一模型Session。
+结论：终止时产物为未完成；Rubric 1至8均未通过，原因见逐条报告。208轮来自扫描证据且未重算，按规则收录长程题。用户明确确认运行超过两小时后手动终止；指定时长脚本没有完成事件，自动时长字段保留无法判断。

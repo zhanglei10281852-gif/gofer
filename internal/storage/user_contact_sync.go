@@ -427,6 +427,16 @@ func contactSyncDestinationTx(ctx context.Context, tx *sql.Tx, p *ContactSyncPro
 	if valid != 1 {
 		return nil, ErrContactPublication
 	}
+	// While a copy move is unfinished, neither the book it leaves nor the
+	// book it enters may receive a fanout write: the source must not be
+	// recreated and the moved vCard must not be overwritten.
+	blocked, err := ActiveContactMoveBlocksBookTx(ctx, tx, owner, p.claim.profile, account, book)
+	if err != nil {
+		return nil, err
+	}
+	if blocked {
+		return nil, ErrContactPublication
+	}
 	d := &ContactSyncDestination{profile: p, account: account, provider: provider, book: book}
 	// A JMAP book keeps its JMAP id where a CardDAV book keeps its URL.
 	if bookScoped {
@@ -705,11 +715,26 @@ func (db *DB) NextUserContactSyncAttempt(ctx context.Context, owner string, lock
 	err := db.Read().QueryRowContext(ctx, `SELECT next_attempt_at,locked_at,status FROM contact_sync_operations WHERE user_id=? AND status IN ('pending','running')
  ORDER BY CASE WHEN status='running' THEN max(julianday(replace(next_attempt_at,' +0000 UTC','')),julianday(replace(locked_at,' +0000 UTC',''))+?)
  ELSE julianday(replace(next_attempt_at,' +0000 UTC','')) END LIMIT 1`, owner, lockTimeout.Hours()/24).Scan(&next, &locked, &status)
+	var syncNext time.Time
 	if errors.Is(err, sql.ErrNoRows) {
-		return time.Time{}, nil
+		syncNext = time.Time{}
+	} else if err != nil {
+		return time.Time{}, err
+	} else {
+		syncNext = next.Time
+		if status == "running" && locked.Time.Add(lockTimeout).After(syncNext) {
+			syncNext = locked.Time.Add(lockTimeout)
+		}
 	}
-	if status == "running" && locked.Time.Add(lockTimeout).After(next.Time) {
-		next.Time = locked.Time.Add(lockTimeout)
+	moveNext, err := db.NextContactMoveAttempt(ctx, owner, lockTimeout)
+	if err != nil {
+		return time.Time{}, err
 	}
-	return next.Time, err
+	if moveNext.IsZero() {
+		return syncNext, nil
+	}
+	if syncNext.IsZero() || moveNext.Before(syncNext) {
+		return moveNext, nil
+	}
+	return syncNext, nil
 }

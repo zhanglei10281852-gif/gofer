@@ -1,0 +1,6 @@
+COMMAND go test -count=1 -run ^$ ./internal/storage ./internal/handler ./internal/views
+ok  	github.com/cristianadrielbraun/gofer/internal/storage	0.306s [no tests to run]
+ok  	github.com/cristianadrielbraun/gofer/internal/handler	0.445s [no tests to run]
+ok  	github.com/cristianadrielbraun/gofer/internal/views	0.253s [no tests to run]
+
+EXIT=0

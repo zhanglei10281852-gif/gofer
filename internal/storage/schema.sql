@@ -1441,6 +1441,65 @@ ON contact_conflicts(user_id, profile_id, status);
 CREATE INDEX IF NOT EXISTS idx_contact_conflicts_account
 ON contact_conflicts(account_id);
 
+-- contact_move_operations drives one copy-then-delete relocation of a single
+-- CardDAV provider card. Every crash window is recoverable from its rows:
+-- phase, both endpoints, the copied vCard bytes and the membership plan.
+CREATE TABLE IF NOT EXISTS contact_move_operations (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    profile_id TEXT NOT NULL REFERENCES contact_profiles(id) ON DELETE CASCADE,
+    source_card_id TEXT NOT NULL DEFAULT '',
+    source_provider TEXT NOT NULL DEFAULT 'carddav',
+    source_account_id TEXT NOT NULL DEFAULT '',
+    source_book_id TEXT NOT NULL DEFAULT '',
+    source_book_url TEXT NOT NULL DEFAULT '',
+    source_remote_id TEXT NOT NULL DEFAULT '',
+    source_etag TEXT NOT NULL DEFAULT '',
+    target_account_id TEXT NOT NULL DEFAULT '',
+    target_book_id TEXT NOT NULL DEFAULT '',
+    target_book_url TEXT NOT NULL DEFAULT '',
+    target_remote_id TEXT NOT NULL DEFAULT '',
+    target_etag TEXT NOT NULL DEFAULT '',
+    phase TEXT NOT NULL DEFAULT 'prepared',
+    outcome TEXT NOT NULL DEFAULT '',
+    vcard_payload TEXT NOT NULL DEFAULT '',
+    vcard_media_type TEXT NOT NULL DEFAULT 'text/vcard',
+    payload_hash TEXT NOT NULL DEFAULT '',
+    source_payload_hash TEXT NOT NULL DEFAULT '',
+    membership_plan_json TEXT NOT NULL DEFAULT '',
+    last_error TEXT NOT NULL DEFAULT '',
+    failed_end TEXT NOT NULL DEFAULT '',
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    locked_at DATETIME,
+    next_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_contact_moves_profile
+ON contact_move_operations(user_id, profile_id, phase, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_contact_moves_due
+ON contact_move_operations(phase, next_attempt_at, locked_at);
+
+CREATE INDEX IF NOT EXISTS idx_contact_moves_source_card
+ON contact_move_operations(user_id, source_card_id, phase);
+
+-- contact_move_tombstones remember a source location whose remote copy was
+-- moved away. A delayed inbound page must not recreate the card or profile.
+CREATE TABLE IF NOT EXISTS contact_move_tombstones (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    move_id TEXT NOT NULL DEFAULT '',
+    profile_id TEXT NOT NULL DEFAULT '' REFERENCES contact_profiles(id) ON DELETE CASCADE,
+    provider TEXT NOT NULL DEFAULT 'carddav',
+    account_id TEXT NOT NULL DEFAULT '',
+    address_book_id TEXT NOT NULL DEFAULT '',
+    remote_id TEXT NOT NULL DEFAULT '',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, provider, account_id, address_book_id, remote_id)
+);
+
 -- Calendar sources and locally cached provider events
 CREATE TABLE IF NOT EXISTS calendar_sources (
     id TEXT PRIMARY KEY,
@@ -1836,4 +1895,4 @@ CREATE TABLE IF NOT EXISTS mail_rule_runs (
 );
 CREATE INDEX IF NOT EXISTS idx_mail_rule_runs_user ON mail_rule_runs(user_id, id);
 
-INSERT OR REPLACE INTO schema_version (version) VALUES (133);
+INSERT OR REPLACE INTO schema_version (version) VALUES (134);

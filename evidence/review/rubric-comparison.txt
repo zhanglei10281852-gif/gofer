@@ -1,0 +1,32 @@
+项目 cristianadrielbraun/gofer | 098872/project-02 | a66831d6-8951-47e9-b2bc-7979bfe7b96d
+将一份 CardDAV 联系人副本移入另一地址簿 | 复盘结论 未完成 | 208轮 | 收录 长程题
+Session 6ae71668cda6a6f7a0805314 | 完整ID见 review-input.json | 基线 1e6c9f7095fce0f33069f415ffbb1d131b50434e
+用户确认运行超过两小时后手动终止；脚本缺完成事件，自动时长结论为无法判断。
+
+Rubric ID：1｜状态：未通过｜期望行为：从联系人详情选定一份 CardDAV 来源可移至本人另一已有地址簿；同一联系人的第三份来源仍保留，其他账号或地址簿不会被连带删除。｜实际观察：两个路由注册入口引用三个不存在的移动处理方法；生成模板仍是基线版本｜直接证据：user_storage.go:392-394；handler.go:508-510；审计记录工作树文件缺失｜原因：移动路由引用的处理函数未落入工作树且应用编译失败｜影响：用户不能发起单来源移动或验证第三份来源保留｜证据位置：internal/handler/user_storage.go:392；evidence/review/working-tree-audit.json
+
+Rubric ID：2｜状态：未通过｜期望行为：目标副本保留所选源 vCard 的照片和界面未展示的属性；目标存在不同内容时停止并保留双方原内容，不能以统一资料重建后静默覆盖。｜实际观察：工作树没有 contact_move.go；仅保留对话框与状态模型，构建退出码为1｜直接证据：working-tree-audit.json 中 contact_move.go=false；current-build.log 的 EXIT=1｜原因：复制执行器文件未落入工作树且应用编译失败｜影响：完整原文复制和目标内容冲突处理不能执行｜证据位置：evidence/review/working-tree-audit.json；evidence/review/current-build.log
+
+Rubric ID：3｜状态：未通过｜期望行为：目标写入失败不会删除源；目标落盘后响应或本地确认失败，重启并继续会确认同一目标副本，不创建重复目标，确认完成前不删源。｜实际观察：工作树没有 contact_moves.go；目标确认、重试和恢复操作没有生产实现｜直接证据：working-tree-audit.json 中 contact_moves.go=false；storage.go:1113 迁移函数未定义｜原因：目标确认与重试状态机未落入工作树且应用编译失败｜影响：写入失败及确认丢失后的继续流程不能执行｜证据位置：evidence/review/working-tree-audit.json；internal/storage/storage.go:1113
+
+Rubric ID：4｜状态：未通过｜期望行为：目标确认后源版本发生变化时，条件删除被拒绝，界面显示冲突并保留新源及已有目标，未经用户重新确认不得强制删除或自动覆盖。｜实际观察：移动执行器不存在；既有 cardDAVDelete 原语未由移动主流程调用｜直接证据：carddav_contacts.go:1763-1786 仅含既有原语；contact_move.go=false｜原因：源条件删除执行器未落入工作树且应用编译失败｜影响：复制后源变更的冲突处置入口不能执行｜证据位置：internal/handler/carddav_contacts.go:1763；evidence/review/working-tree-audit.json
+
+Rubric ID：5｜状态：未通过｜期望行为：源已删除而本地收尾提交失败后，继续操作能确认远端缺失并只移除所选本地来源，最终显示完成，不重新复制或把整个联系人标为已删除。｜实际观察：只有移动表定义，收尾实现不存在；编译器报缺失迁移和移动查询方法｜直接证据：contacts.go:888 的 ListProfileContactMoves 未定义；storage.go:1113 迁移函数未定义｜原因：移动收尾持久化实现未落入工作树且应用编译失败｜影响：远端删除后的本地收尾与恢复不能执行｜证据位置：internal/storage/contacts.go:888；internal/storage/storage.go:1113
+
+Rubric ID：6｜状态：未通过｜期望行为：在移动复制与删除之间触发入站同步或已排队的 Gofer Sync，移动完成后再次同步，源不会被重建，目标内容与其余复制位置保持正确。｜实际观察：入站及出站同步新增的三个守卫符号均无定义，存储包构建失败｜直接证据：contact_publication.go:88、98 与 user_contact_sync.go:433 出现 undefined 编译错误｜原因：新增同步守卫调用未定义函数导致同步包编译失败｜影响：入站发布和排队扇出无法运行，移动保护不能执行｜证据位置：internal/storage/contact_publication.go:88；internal/storage/user_contact_sync.go:433
+
+Rubric ID：7｜状态：未通过｜期望行为：刷新、重启或账号服务失效后仍可查询移动的真实阶段；同一移动的重复继续请求不会另起一份移动，部分成功不会显示成全部完成。｜实际观察：状态与继续路由引用不存在的方法；详情查询引用不存在的移动列表方法｜直接证据：user_storage.go:393-394；contacts.go:888；current-build.log 的未定义方法错误｜原因：进度读取与继续处理函数未定义且应用编译失败｜影响：刷新查询、继续操作和账号失效阶段展示不能运行｜证据位置：internal/handler/user_storage.go:393；internal/storage/contacts.go:888
+
+Rubric ID：8｜状态：未通过｜期望行为：未发起移动时，普通编辑和导入仍可使用，移除 Gofer Sync 目标仍只停止复制而保留远端副本，联系人回收站和永久删除维持原有范围。｜实际观察：相同环境下基线应用构建退出0，当前应用构建退出1；三个原有包均构建失败｜直接证据：baseline-app-build.log 的 EXIT=0；current-build.log 的 EXIT=1；current-test.log 三包构建失败｜原因：登记基线可构建而终止时产物编译失败导致原有功能无法启动｜影响：普通编辑、导入、同步目标调整、回收站及永久删除无法由本次构建启动｜证据位置：evidence/review/baseline-app-build.log；evidence/review/current-build.log
+
+关键原始证据（同一次运行终止状态，未恢复 stash）
+基线 go build -o baseline-gofer.exe . => EXIT=0；当前 go build -o gofer-review-build.exe . => EXIT=1
+当前 go test -count=1 ./internal/storage ./internal/handler ./internal/views => 三包 [build failed]；EXIT=1
+internal\storage\contact_publication.go:88:23: undefined: contactMoveTombstoneExistsTx
+internal\storage\contact_publication.go:98:22: undefined: activeMoveTargetRemoteTx
+internal\storage\contacts.go:888:24: db.ListProfileContactMoves undefined (type *DB has no field or method ListProfileContactMoves)
+internal\storage\storage.go:1113:13: undefined: migrateV133ToV134
+internal\storage\user_contact_sync.go:433:18: undefined: ActiveContactMoveBlocksBookTx
+internal\storage\user_contact_sync.go:729:22: db.NextContactMoveAttempt undefined (type *DB has no field or method NextContactMoveAttempt)
+工作树文件检查 contact_move.go=false; contact_move_api.go=false; contact_moves.go=false; contact_move_schema.go=false
+stash 609510bdc83242c12078d7dc748a5126d534e7ef 保存13个新增文件；evidence/trajectory.md:2777 记录 git stash -u 基线检查。

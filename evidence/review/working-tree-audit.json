@@ -1,0 +1,29 @@
+{
+  "workingTreeFiles": {
+    "internal/config/user_contact_move.go": false,
+    "internal/handler/contact_move.go": false,
+    "internal/handler/contact_move_api.go": false,
+    "internal/storage/contact_move_schema.go": false,
+    "internal/storage/contact_moves.go": false,
+    "internal/handler/contact_move_test.go": false,
+    "internal/storage/contact_moves_test.go": false
+  },
+  "stash": "609510bdc83242c12078d7dc748a5126d534e7ef",
+  "head": "1e6c9f7095fce0f33069f415ffbb1d131b50434e",
+  "stashOnlyFiles": [
+    ".trae/specs/contact-source-move/spec.md",
+    ".trae/specs/contact-source-move/tasks.md",
+    "internal/config/user_contact_move.go",
+    "internal/handler/contact_move.go",
+    "internal/handler/contact_move_api.go",
+    "internal/handler/contact_move_api_test.go",
+    "internal/handler/contact_move_test.go",
+    "internal/storage/contact_move_guards_test.go",
+    "internal/storage/contact_move_schema.go",
+    "internal/storage/contact_move_schema_test.go",
+    "internal/storage/contact_moves.go",
+    "internal/storage/contact_moves_test.go",
+    "internal/views/contact_moves_test.go"
+  ],
+  "generatedTemplateMatchesBaseline": true
+}

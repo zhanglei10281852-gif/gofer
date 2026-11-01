@@ -1,5 +1,62 @@
 package models
 
+// Contact move phases. A move copies one CardDAV provider card into another
+// connected address book and only deletes the source after the copy is
+// durably confirmed. Every non-terminal phase can be resumed after a restart.
+const (
+	ContactMovePhasePrepared    = "prepared"
+	ContactMovePhaseCopying     = "copying"
+	ContactMovePhaseCopied      = "copied"
+	ContactMovePhaseDeleting    = "deleting"
+	ContactMovePhaseSourceConflict = "conflict_source_changed"
+	ContactMovePhaseBlockedTarget  = "blocked_target"
+	ContactMovePhaseBlockedAccount = "blocked_account"
+	ContactMovePhaseRetry      = "failed_retry"
+	ContactMovePhaseDone       = "done"
+)
+
+// Contact move outcomes once phase is done.
+const (
+	ContactMoveOutcomeMoved    = "moved"
+	ContactMoveOutcomeKeptBoth = "kept_both"
+	ContactMoveOutcomeCancelled = "cancelled"
+)
+
+// ContactMoveFailedEnd marks which endpoint blocked the move.
+const (
+	ContactMoveEndSource = "source"
+	ContactMoveEndTarget = "target"
+)
+
+// ContactMoveTerminal reports whether a move phase no longer progresses.
+func ContactMoveTerminal(phase string) bool {
+	return phase == ContactMovePhaseDone
+}
+
+// ContactMove is the view-facing state of one card relocation.
+type ContactMove struct {
+	ID              string
+	UserID          string
+	ProfileID       string
+	SourceCardID    string
+	SourceProvider  string
+	SourceAccountID string
+	SourceBookID    string
+	SourceRemoteID  string
+	SourceEtag      string
+	TargetAccountID string
+	TargetBookID    string
+	TargetRemoteID  string
+	TargetEtag      string
+	Phase           string
+	Outcome         string
+	LastError       string
+	FailedEnd       string
+	AttemptCount    int
+	CreatedAt       string
+	UpdatedAt       string
+}
+
 type ContactProfile struct {
 	ID           string
 	UserID       string
@@ -19,6 +76,7 @@ type ContactProfile struct {
 	Cards           []ContactCard
 	Fields          []ContactField
 	SyncMemberships []ContactSyncMembership
+	Moves           []ContactMove
 	Insights        []ContactInsight
 }
 

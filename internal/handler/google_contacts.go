@@ -366,6 +366,23 @@ func (h *Handler) upsertInboundSyncedContact(ctx context.Context, userID, provid
 			return "", false, err
 		}
 	}
+	if strings.TrimSpace(remoteID) != "" {
+		// A copy moved to another book must not be recreated by a late sync
+		// result, and a pending move's destination must not be imported as a
+		// second contact.
+		if buried, err := h.db.ContactMoveTombstoneForRemoteExists(ctx, userID, provider, accountID, remoteID); err != nil {
+			return "", false, err
+		} else if buried {
+			return "", false, nil
+		}
+		if provider == providers.ProviderCardDAV {
+			if owned, err := h.db.ActiveContactMoveTargetRemoteExists(ctx, userID, accountID, remoteID); err != nil {
+				return "", false, err
+			} else if owned {
+				return "", false, nil
+			}
+		}
+	}
 	contactID, _, canonicalChanged, err := h.db.UpsertSyncedContactForProfileWithChange(ctx, userID, accountID, profileID, contact)
 	return contactID, canonicalChanged, err
 }

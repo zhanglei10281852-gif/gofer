@@ -1,0 +1,16 @@
+{
+  "ok": false,
+  "sessionId": "6ae71668cda6a6f7a0805314",
+  "exceededTwoHours": "无法判断",
+  "sessionStartedAt": "2026-11-01T10:37:30.193Z",
+  "sessionCompletedAt": "",
+  "sessionDurationSeconds": null,
+  "sessionDurationSource": "trae-renderer-log-incomplete",
+  "evidence": {
+    "start": {
+      "file": "C:\\Users\\czxy4\\AppData\\Roaming\\Trae CN\\logs\\20261101T153259\\window2\\renderer.log",
+      "line": 1637
+    },
+    "completed": null
+  }
+}

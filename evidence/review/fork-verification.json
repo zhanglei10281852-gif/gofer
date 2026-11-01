@@ -1,0 +1,15 @@
+{
+  "full_name": "zhanglei10281852-gif/gofer",
+  "fork": true,
+  "permissions": {
+    "admin": true,
+    "maintain": true,
+    "push": true,
+    "triage": true,
+    "pull": true
+  },
+  "owner": "zhanglei10281852-gif",
+  "owner_type": "User",
+  "parent": "cristianadrielbraun/gofer",
+  "authorizedUser": "zhanglei10281852-gif"
+}

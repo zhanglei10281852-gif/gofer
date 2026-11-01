@@ -2067,8 +2067,12 @@ templ ContactReadOnlyView(contact models.Contact, profile *models.ContactProfile
 				</p>
 			</div>
 		}
+		if profile != nil {
+			@ContactMovesBanner(profile, accounts)
+		}
 		@ContactReadOnlyContactInfo(contact)
 		@ContactReadOnlySyncInfo(contact, profile, syncQueued, accounts)
+		@ContactReadOnlyCopies(&contact, profile, accounts)
 		@ContactReadOnlyActivityInfo(contact)
 		@ContactRecentActivityLoader(contact)
 	</div>
@@ -3000,6 +3004,405 @@ templ ContactProfileCardRow(card models.ContactCard, accounts []models.Account) 
 		if card.RemoteID != "" {
 			<div class="mt-2 truncate rounded border border-ink/10 bg-ink/[0.025] px-2 py-1 font-mono text-[10px] text-muted-foreground">{ card.RemoteID }</div>
 		}
+	</div>
+}
+
+func contactMoveByCard(profile *models.ContactProfile, cardID string) (models.ContactMove, bool) {
+	if profile == nil {
+		return models.ContactMove{}, false
+	}
+	for _, move := range profile.Moves {
+		if move.SourceCardID == cardID && move.Phase != models.ContactMovePhaseDone {
+			return move, true
+		}
+	}
+	return models.ContactMove{}, false
+}
+
+func contactRecentDoneMove(profile *models.ContactProfile) (models.ContactMove, bool) {
+	if profile == nil {
+		return models.ContactMove{}, false
+	}
+	for _, move := range profile.Moves {
+		if move.Phase == models.ContactMovePhaseDone {
+			return move, true
+		}
+	}
+	return models.ContactMove{}, false
+}
+
+func contactActiveMove(profile *models.ContactProfile) (models.ContactMove, bool) {
+	if profile == nil {
+		return models.ContactMove{}, false
+	}
+	for _, move := range profile.Moves {
+		if move.Phase != models.ContactMovePhaseDone {
+			return move, true
+		}
+	}
+	return models.ContactMove{}, false
+}
+
+func contactMoveBookLabel(accounts []models.Account, accountID, bookID string) string {
+	label := contactAccountLabelSimple(accountID, accounts)
+	for _, account := range accounts {
+		if account.ID != accountID {
+			continue
+		}
+		for _, book := range account.ContactAddressBooks {
+			if book.ID == bookID {
+				return label + " / " + contactAddressBookDisplayName(book)
+			}
+		}
+	}
+	if bookID != "" {
+		return label + " / " + bookID
+	}
+	return label
+}
+
+func contactAccountLabelSimple(accountID string, accounts []models.Account) string {
+	for _, account := range accounts {
+		if account.ID == accountID {
+			if name := strings.TrimSpace(account.Name); name != "" {
+				return name
+			}
+			return account.Email
+		}
+	}
+	return accountID
+}
+
+// contactMoveTargetBooks lists connected CardDAV books that may receive a
+// copy, excluding the copy's current book.
+func contactMoveTargetBooks(accounts []models.Account, sourceAccountID, sourceBookID string) []models.ContactAddressBook {
+	var books []models.ContactAddressBook
+	for _, account := range accounts {
+		for _, book := range account.ContactAddressBooks {
+			if account.ID == sourceAccountID && book.ID == sourceBookID {
+				continue
+			}
+			books = append(books, book)
+		}
+	}
+	return books
+}
+
+func contactMovePhaseText(phase string) string {
+	switch phase {
+	case models.ContactMovePhasePrepared:
+		return "Starting the move"
+	case models.ContactMovePhaseCopying:
+		return "Copying the vCard to the new book"
+	case models.ContactMovePhaseCopied:
+		return "Copy confirmed; removing the source copy"
+	case models.ContactMovePhaseDeleting:
+		return "Removing the source copy"
+	case models.ContactMovePhaseSourceConflict:
+		return "The source copy changed after it was copied"
+	case models.ContactMovePhaseBlockedTarget:
+		return "The destination book already holds a different contact"
+	case models.ContactMovePhaseBlockedAccount:
+		return "An account involved in the move is unavailable"
+	case models.ContactMovePhaseRetry:
+		return "Waiting to retry the move"
+	default:
+		return "Moving the copy"
+	}
+}
+
+func contactMoveEndLabel(end string, accounts []models.Account, move models.ContactMove) string {
+	switch end {
+	case models.ContactMoveEndSource:
+		return contactMoveBookLabel(accounts, move.SourceAccountID, move.SourceBookID)
+	case models.ContactMoveEndTarget:
+		return contactMoveBookLabel(accounts, move.TargetAccountID, move.TargetBookID)
+	}
+	return ""
+}
+
+// ContactReadOnlyCopies lists every remote provider copy and offers the move
+// action on CardDAV cards.
+templ ContactReadOnlyCopies(contact *models.Contact, profile *models.ContactProfile, accounts []models.Account) {
+	if profile != nil && len(profile.Cards) > 0 {
+		{{
+			var providerCards []models.ContactCard
+			for _, card := range profile.Cards {
+				if card.Kind == "provider" && !card.IsDeleted {
+					providerCards = append(providerCards, card)
+				}
+			}
+		}}
+		if len(providerCards) > 0 {
+			<section class="w-full rounded-lg border border-ink/10 bg-ink/[0.02]">
+				<div class="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 px-4 py-3">
+					<div class="inline-flex items-center gap-2">
+						@icon.IdCard(icon.Props{Class: "size-3.5 text-muted-foreground"})
+						<h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Copies in address books</h2>
+					</div>
+				</div>
+				<div class="space-y-2 p-3">
+					<p class="text-xs leading-relaxed text-muted-foreground">
+						Each row is one copy of this contact in a connected book. Moving a copy transfers its complete vCard to another book and leaves every other copy untouched.
+					</p>
+					for _, card := range providerCards {
+						@ContactCopyRow(contact, profile, card, accounts)
+					}
+				</div>
+			</section>
+		}
+	}
+}
+
+templ ContactCopyRow(contact *models.Contact, profile *models.ContactProfile, card models.ContactCard, accounts []models.Account) {
+	{{
+		_, moveActive := contactMoveByCard(profile, card.ID)
+		movable := card.Provider == "carddav" && strings.TrimSpace(card.RemoteID) != "" && !moveActive && contact.TrashedAt == ""
+	}}
+	<div class="rounded-md border border-ink/10 bg-paper px-3 py-2.5" data-contact-copy={ card.ID }>
+		<div class="flex flex-wrap items-center justify-between gap-3">
+			<div class="min-w-0">
+				<div class="truncate text-sm font-semibold text-ink">
+					{ contactCardAccountLabel(card, accounts) }
+				</div>
+				<div class="mt-0.5 text-xs text-muted-foreground">
+					{ contactCardKindLabel(card) }
+					if card.Provider == "carddav" || card.Provider == "jmap" {
+						<span class="mx-1">·</span>
+						{ contactMoveBookLabel(accounts, card.AccountID, card.AddressBookID) }
+					}
+				</div>
+			</div>
+			<div class="flex shrink-0 items-center gap-2">
+				if card.SyncStatus != "" {
+					<span class="rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{ card.SyncStatus }</span>
+				}
+				if card.Etag != "" {
+					<span class="rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">etag</span>
+				}
+				if movable {
+					<button type="button" class="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink/10 bg-paper px-2.5 text-xs font-semibold text-muted-foreground shadow-none transition-colors hover:bg-ink/[0.06] hover:text-ink"
+						data-contact-move-open={ "move-dialog-" + card.ID }>
+						@icon.Route(icon.Props{Class: "size-3.5"})
+						Move copy…
+					</button>
+				}
+			</div>
+		</div>
+		if moveActive {
+			if move, ok := contactMoveByCard(profile, card.ID); ok {
+				<div class="mt-2">
+					@ContactMoveInlineBanner(contact.ID, move, accounts)
+				</div>
+			}
+		}
+		if movable {
+			@ContactMoveDialog(contact, card, accounts)
+		}
+	</div>
+}
+
+templ ContactMoveDialog(contact *models.Contact, card models.ContactCard, accounts []models.Account) {
+	{{ books := contactMoveTargetBooks(accounts, card.AccountID, card.AddressBookID) }}
+	<dialog id={ "move-dialog-" + card.ID } class="m-0 w-[min(92vw,32rem)] rounded-lg border border-ink/10 bg-paper p-0 text-ink shadow-xl backdrop:bg-black/40">
+		<div class="border-b border-ink/10 px-5 py-4">
+			<h3 class="text-base font-semibold">Move this copy</h3>
+			<p class="mt-1 text-xs leading-relaxed text-muted-foreground">
+				Move the <b>{ contactMoveBookLabel(accounts, card.AccountID, card.AddressBookID) }</b> copy to another connected CardDAV address book. Only this copy moves; the contact's other copies stay where they are, and Gofer Sync is not turned off.
+			</p>
+		</div>
+		<form class="space-y-4 px-5 py-4">
+			<div>
+				<label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground" for={ "move-target-" + card.ID }>Destination address book</label>
+				if len(books) == 0 {
+					<p class="text-xs text-amber-700">Connect another CardDAV address book first.</p>
+				} else {
+					<select id={ "move-target-" + card.ID } name="target_book_id" class="h-10 w-full rounded-lg border border-ink/10 bg-ink/[0.04] px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10" required>
+						<option value="" disabled selected>Choose an address book…</option>
+						for _, book := range books {
+							<option value={ book.ID }>{ contactMoveBookLabel(accounts, book.AccountID, book.ID) }</option>
+						}
+					</select>
+				}
+			</div>
+			<div class="flex items-center justify-end gap-2 border-t border-ink/10 pt-4">
+				<button type="button" class="inline-flex h-9 items-center rounded-md px-3 text-sm font-semibold text-muted-foreground hover:bg-ink/[0.06]" data-contact-move-close={ "move-dialog-" + card.ID }>
+					Cancel
+				</button>
+				<button type="submit" class="inline-flex h-9 items-center gap-1.5 rounded-md bg-ink px-4 text-sm font-semibold text-paper disabled:opacity-50"
+					hx-post={ fmt.Sprintf("/api/contacts/%s/sources/%s/move", contact.ID, card.ID) }
+					hx-target="#mail-view" hx-swap="innerHTML" hx-include={ "#move-target-" + card.ID }
+					hx-disabled-elt="this" data-contact-move-confirm={ card.ID }
+					if len(books) == 0 {
+						disabled
+					}>
+					@icon.Route(icon.Props{Class: "size-4"})
+					Move copy
+				</button>
+			</div>
+		</form>
+	</dialog>
+}
+
+// ContactMovesBanner renders every move for a profile; it doubles as the
+// polling endpoint response.
+templ ContactMovesBanner(profile *models.ContactProfile, accounts []models.Account) {
+	{{
+		var active []models.ContactMove
+		var pollMove *models.ContactMove
+		var recentDone *models.ContactMove
+		if profile != nil {
+			for i := range profile.Moves {
+				move := profile.Moves[i]
+				if move.Phase == models.ContactMovePhaseDone {
+					if recentDone == nil {
+						m := move
+						recentDone = &m
+					}
+					continue
+				}
+				active = append(active, move)
+				switch move.Phase {
+				case models.ContactMovePhasePrepared, models.ContactMovePhaseCopying, models.ContactMovePhaseCopied, models.ContactMovePhaseDeleting, models.ContactMovePhaseRetry:
+					if pollMove == nil {
+						m := move
+						pollMove = &m
+					}
+				}
+			}
+		}
+	}}
+	<div id="contact-moves-banner" class="space-y-2" data-contact-moves>
+		for _, move := range active {
+			@ContactMoveInlineBanner(profile.ID, move, accounts)
+		}
+		if pollMove != nil {
+			<div hx-get={ fmt.Sprintf("/api/contacts/%s/move/%s", profile.ID, pollMove.ID) } hx-trigger="every 2s" hx-swap="outerHTML" hx-target="#contact-moves-banner"></div>
+		} else if recentDone != nil {
+			// Polling endpoint landing here refreshes the whole detail once.
+			<div hx-get={ fmt.Sprintf("/contacts?partial=detail&contact=%s", profile.ID) } hx-trigger="load" hx-target="#mail-view" hx-swap="innerHTML">
+				@ContactMoveDoneBanner(recentDone, accounts)
+			</div>
+		}
+	</div>
+}
+
+templ ContactMoveInlineBanner(contactID string, move models.ContactMove, accounts []models.Account) {
+	<div class="rounded-md border px-3 py-2.5 text-sm" data-contact-move-id={ move.ID } data-contact-move-phase={ move.Phase }>
+		switch move.Phase {
+			case models.ContactMovePhasePrepared, models.ContactMovePhaseCopying, models.ContactMovePhaseCopied, models.ContactMovePhaseDeleting:
+				<div class="flex items-center gap-2 border-sky-500/20 bg-sky-50 text-sky-800">
+					@icon.LoaderCircle(icon.Props{Class: "size-4 shrink-0 animate-spin"})
+					<div class="min-w-0">
+						<div class="font-semibold">{ contactMovePhaseText(move.Phase) }</div>
+						<div class="text-xs opacity-80">
+							From { contactMoveBookLabel(accounts, move.SourceAccountID, move.SourceBookID) } to { contactMoveBookLabel(accounts, move.TargetAccountID, move.TargetBookID) }
+						</div>
+					</div>
+				</div>
+			case models.ContactMovePhaseRetry:
+				<div class="space-y-2 border-amber-500/20 bg-amber-50 text-amber-800">
+					<div class="flex items-center gap-2">
+						@icon.RefreshCw(icon.Props{Class: "size-4 shrink-0"})
+						<div class="min-w-0">
+							<div class="font-semibold">Waiting to retry the move</div>
+							if move.LastError != "" {
+								<div class="text-xs opacity-80">{ move.LastError }</div>
+							}
+						</div>
+					</div>
+					@ContactMoveContinueButton(contactID, move, "continue", "Continue now")
+				</div>
+			case models.ContactMovePhaseSourceConflict:
+				<div class="space-y-2 border-amber-500/20 bg-amber-50 text-amber-800">
+					<div class="flex items-start gap-2">
+						@icon.BadgeAlert(icon.Props{Class: "mt-0.5 size-4 shrink-0"})
+						<div class="min-w-0">
+							<div class="font-semibold">The source copy changed after it was copied</div>
+							<p class="mt-0.5 text-xs leading-relaxed opacity-90">
+								The original book now holds a newer version. Copy the newer version and remove the source, or keep both copies.
+							</p>
+						</div>
+					</div>
+					<div class="flex flex-wrap gap-2">
+						@ContactMoveContinueButton(contactID, move, "recopy", "Copy newer version & delete source")
+						@ContactMoveContinueButton(contactID, move, "keep_both", "Keep both copies")
+					</div>
+				</div>
+			case models.ContactMovePhaseBlockedTarget:
+				<div class="space-y-2 border-red-500/20 bg-red-50 text-red-800">
+					<div class="flex items-start gap-2">
+						@icon.BadgeAlert(icon.Props{Class: "mt-0.5 size-4 shrink-0"})
+						<div class="min-w-0">
+							<div class="font-semibold">Destination already holds a different contact</div>
+							<p class="mt-0.5 text-xs leading-relaxed opacity-90">Gofer did not overwrite it. Choose another book or cancel the move.</p>
+						</div>
+					</div>
+					<form class="flex flex-wrap items-center gap-2" hx-post={ fmt.Sprintf("/api/contacts/%s/move/%s/continue", contactID, move.ID) } hx-target="#mail-view" hx-swap="innerHTML">
+						<input type="hidden" name="action" value="retarget"/>
+						<select name="target_book_id" class="h-9 rounded-md border border-red-300 bg-white px-2 text-xs text-ink" required>
+							<option value="" disabled selected>Choose another book…</option>
+							for _, book := range contactMoveTargetBooks(accounts, move.SourceAccountID, move.SourceBookID) {
+								if book.ID != move.TargetBookID {
+									<option value={ book.ID }>{ contactMoveBookLabel(accounts, book.AccountID, book.ID) }</option>
+								}
+							}
+						</select>
+						<button type="submit" class="inline-flex h-9 items-center rounded-md bg-ink px-3 text-xs font-semibold text-paper">Choose another book</button>
+					</form>
+					@ContactMoveContinueButton(contactID, move, "cancel", "Cancel move")
+				</div>
+			case models.ContactMovePhaseBlockedAccount:
+				<div class="space-y-2 border-red-500/20 bg-red-50 text-red-800">
+					<div class="flex items-start gap-2">
+						@icon.BadgeAlert(icon.Props{Class: "mt-0.5 size-4 shrink-0"})
+						<div class="min-w-0">
+							<div class="font-semibold">An account involved in the move is unavailable</div>
+							<div class="mt-0.5 text-xs opacity-80">
+								{ contactMoveEndLabel(move.FailedEnd, accounts, move) }
+							</div>
+							if move.LastError != "" {
+								<div class="mt-1 break-words text-xs opacity-90">{ move.LastError }</div>
+							}
+							<p class="mt-1 text-xs opacity-90">Reconnect the account, then continue. The copied content and the source copy are both intact.</p>
+						</div>
+					</div>
+					<div class="flex flex-wrap gap-2">
+						@ContactMoveContinueButton(contactID, move, "continue", "Continue")
+						@ContactMoveContinueButton(contactID, move, "cancel", "Cancel move")
+					</div>
+				</div>
+		}
+	</div>
+}
+
+templ ContactMoveContinueButton(contactID string, move models.ContactMove, action, label string) {
+	<form hx-post={ fmt.Sprintf("/api/contacts/%s/move/%s/continue", contactID, move.ID) } hx-target="#mail-view" hx-swap="innerHTML">
+		<input type="hidden" name="action" value={ action }/>
+		<button type="submit" class="inline-flex h-9 items-center gap-1.5 rounded-md border border-ink/10 px-3 text-xs font-semibold enabled:hover:bg-ink/[0.06]" hx-disabled-elt="this">
+			if action == "continue" || action == "recopy" {
+				@icon.RefreshCw(icon.Props{Class: "size-3.5"})
+			}
+			{ label }
+		</button>
+	</form>
+}
+
+templ ContactMoveDoneBanner(move *models.ContactMove, accounts []models.Account) {
+	<div class="rounded-md border border-emerald-500/20 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800" data-contact-move-id={ move.ID }>
+		<div class="flex items-center gap-2">
+			@icon.CloudSync(icon.Props{Class: "size-4 shrink-0"})
+			<div>
+				switch move.Outcome {
+					case models.ContactMoveOutcomeKeptBoth:
+						<span class="font-semibold">Both copies were kept.</span>
+					case models.ContactMoveOutcomeCancelled:
+						<span class="font-semibold">The move was cancelled.</span>
+					default:
+						<span class="font-semibold">Copy moved to { contactMoveBookLabel(accounts, move.TargetAccountID, move.TargetBookID) }.</span>
+				}
+			</div>
+		</div>
 	</div>
 }
 

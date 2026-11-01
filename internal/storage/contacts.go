@@ -885,6 +885,7 @@ func (db *DB) getContactWithProfile(ctx context.Context, userID, contactID strin
 	contact.SaveTargets, _ = db.GetContactSaveTargets(ctx, userID, contactID)
 	_ = db.hydrateContactAddressBooks(ctx, userID, &contact)
 	_ = db.hydrateContactSyncState(ctx, userID, &contact)
+	profile.Moves, _ = db.ListProfileContactMoves(ctx, userID, contactID, 10)
 	return &contact, profile, nil
 }
 

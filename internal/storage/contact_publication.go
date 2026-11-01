@@ -81,6 +81,29 @@ func (db *DB) publishInboundContacts(ctx context.Context, owner, account, provid
 			results = append(results, InboundContactResult{})
 			continue
 		}
+		// A moved-away source must not be recreated by a delayed sync page,
+		// and a remote a pending move is about to own must not arrive here as
+		// a second contact. Both are skipped silently like trash copies.
+		if provider == "carddav" || provider == "jmap" {
+			tombstoned, err := contactMoveTombstoneExistsTx(ctx, tx, owner, provider, account, input.AddressBookID, input.RemoteID)
+			if err != nil {
+				return nil, err
+			}
+			if tombstoned {
+				results = append(results, InboundContactResult{})
+				continue
+			}
+		}
+		if provider == "carddav" {
+			moveOwned, err := activeMoveTargetRemoteTx(ctx, tx, owner, account, input.RemoteID)
+			if err != nil {
+				return nil, err
+			}
+			if moveOwned {
+				results = append(results, InboundContactResult{})
+				continue
+			}
+		}
 		id, created, changed, err := upsertSyncedContactTx(ctx, tx, owner, account, preferred, input.Contact)
 		if err != nil {
 			return nil, err
