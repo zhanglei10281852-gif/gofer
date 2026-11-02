@@ -16,6 +16,7 @@ import (
 	goimap "github.com/emersion/go-imap/v2"
 
 	mailpkg "github.com/cristianadrielbraun/gofer/internal/mail"
+	"github.com/cristianadrielbraun/gofer/internal/mail/dsn"
 	imapclient "github.com/cristianadrielbraun/gofer/internal/mail/imap"
 	"github.com/cristianadrielbraun/gofer/internal/mail/message"
 	smtpclient "github.com/cristianadrielbraun/gofer/internal/mail/smtp"
@@ -59,6 +60,8 @@ type outgoingMessageSnapshot struct {
 	IdentityID           string                        `json:"identity_id,omitempty"`
 	// IdentitySMTP sends the message through the identity's own server.
 	IdentitySMTP bool `json:"identity_smtp,omitempty"`
+	// RequestDSN is the user's opt-in request for delivery status notifications.
+	RequestDSN bool `json:"request_dsn,omitempty"`
 }
 
 type sentCopyIMAPClient interface {
@@ -92,6 +95,7 @@ func snapshotOutgoingMessage(msg *message.OutgoingMessage) outgoingMessageSnapsh
 		Attachments:          snapshotOutgoingAttachments(msg.Attachments),
 		IdentityID:           msg.IdentityID,
 		IdentitySMTP:         msg.IdentitySMTP,
+		RequestDSN:           msg.RequestDSN,
 	}
 }
 
@@ -116,6 +120,7 @@ func (snapshot outgoingMessageSnapshot) outgoingMessage() *message.OutgoingMessa
 		Attachments:          restoreOutgoingAttachments(snapshot.Attachments),
 		IdentityID:           snapshot.IdentityID,
 		IdentitySMTP:         snapshot.IdentitySMTP,
+		RequestDSN:           snapshot.RequestDSN,
 	}
 }
 
@@ -183,6 +188,29 @@ func outgoingTransportForMessage(cfg *models.AccountConfig, msg *message.Outgoin
 	return outgoingTransportForConfig(cfg)
 }
 
+// resolveDSNEnqueue decides the queued send's DSN fields. Only SMTP carries
+// the option; every other transport keeps its original behavior. A fresh
+// envelope id is generated here once and reused by retries and pending-draft
+// edits, so late reports always bind to one send.
+func resolveDSNEnqueue(msg *message.OutgoingMessage, transport string) (bool, string) {
+	if !msg.RequestDSN || transport != storage.OutgoingTransportSMTP {
+		return false, ""
+	}
+	return true, dsn.NewEnvelopeID()
+}
+
+// resolveDSNEnqueueExisting preserves an envelope id a previous queue attempt
+// already bound, and only generates one when the option became requested.
+func resolveDSNEnqueueExisting(msg *message.OutgoingMessage, transport, existing string) (bool, string) {
+	if !msg.RequestDSN || transport != storage.OutgoingTransportSMTP {
+		return false, ""
+	}
+	if strings.TrimSpace(existing) != "" {
+		return true, existing
+	}
+	return true, dsn.NewEnvelopeID()
+}
+
 func buildOutgoingMIME(transport string, msg *message.OutgoingMessage) ([]byte, error) {
 	if transport == storage.OutgoingTransportJMAP {
 		return message.BuildMIMEMessageForJMAP(msg)
@@ -227,6 +255,7 @@ func (h *Handler) queueOutgoingMessage(ctx context.Context, accountID string, lo
 	if len(recipients) == 0 {
 		return storage.OutgoingSend{}, fmt.Errorf("no recipients")
 	}
+	requestDSN, dsnEnvelopeID := resolveDSNEnqueue(msg, transport)
 	queued, err := h.db.QueueOutgoingSend(ctx, storage.QueueOutgoingSendInput{
 		AccountID:          accountID,
 		MessageID:          localMessageID,
@@ -238,6 +267,8 @@ func (h *Handler) queueOutgoingMessage(ctx context.Context, accountID string, lo
 		MessageJSON:        snapshotJSON,
 		SendAfter:          sendAfter,
 		IsScheduled:        scheduled,
+		RequestDSN:         requestDSN,
+		DSNEnvelopeID:      dsnEnvelopeID,
 	})
 	if err == nil && h.userMutationState != nil {
 		h.userMutationState.wake[accountID] = true
@@ -324,7 +355,7 @@ func (h *Handler) prepareMigratedOutgoingSends(ctx context.Context) {
 			_ = h.db.MarkPendingOutgoingSendFailed(ctx, send.ID, err.Error())
 			continue
 		}
-		if err := h.db.PrepareOutgoingSend(ctx, send.ID, send.DraftID, transport, msg.FromEmail, message.AllRecipients(msg), raw, snapshotJSON); err != nil {
+		if err := h.db.PrepareOutgoingSend(ctx, send.ID, send.DraftID, transport, msg.FromEmail, message.AllRecipients(msg), raw, snapshotJSON, send.DSNRequested, send.DSNEnvelopeID); err != nil {
 			log.Printf("outgoing-send: prepare migrated send %s: %v", send.ID, err)
 		}
 	}
@@ -375,6 +406,7 @@ func (h *Handler) deliverOutgoingSend(parent context.Context, send storage.Outgo
 	}
 	status := storage.OutgoingSendFailed
 	var providerMessageID, providerToken string
+	var smtpOutcome smtpclient.DeliveryOutcome
 	switch send.Transport {
 	case storage.OutgoingTransportGmail:
 		providerMessageID, providerToken, err = h.sendGmailAPIRaw(sendCtx, cfg, send.MIMEData)
@@ -384,9 +416,9 @@ func (h *Handler) deliverOutgoingSend(parent context.Context, send storage.Outgo
 		providerMessageID, err = h.sendJMAPOutgoingRaw(sendCtx, cfg, send)
 	case storage.OutgoingTransportSMTP:
 		if snapshot.IdentitySMTP {
-			err = h.sendIdentitySMTPOutgoingRaw(sendCtx, send, snapshot.IdentityID)
+			smtpOutcome, err = h.sendIdentitySMTPOutgoingRaw(sendCtx, send, snapshot.IdentityID)
 		} else {
-			err = h.sendSMTPOutgoingRaw(sendCtx, cfg, send)
+			smtpOutcome, err = h.sendSMTPOutgoingRaw(sendCtx, cfg, send)
 		}
 	default:
 		err = fmt.Errorf("unsupported outgoing transport %q", send.Transport)
@@ -394,6 +426,8 @@ func (h *Handler) deliverOutgoingSend(parent context.Context, send storage.Outgo
 	if err != nil {
 		if errors.Is(err, errOutgoingSendAmbiguous) {
 			status = storage.OutgoingSendAmbiguous
+			// Reports may still resolve an ambiguous DSN transaction.
+			h.recordOutgoingDSNAcceptance(parent, send, smtpOutcome)
 		} else if errors.Is(err, errOutgoingSendReconnect) {
 			h.finishOutgoingSend(send, status, err)
 			return
@@ -406,6 +440,11 @@ func (h *Handler) deliverOutgoingSend(parent context.Context, send storage.Outgo
 		h.finishOutgoingSend(send, status, err)
 		return
 	}
+
+	// Record what the accepting SMTP server granted before the row's envelope
+	// snapshot is released: acceptance is not delivery, and reports arrive
+	// later.
+	h.recordOutgoingDSNAcceptance(parent, send, smtpOutcome)
 
 	h.saveSentMessageSnapshot(parent, send.AccountID, msg, send.MIMEData)
 	if send.Transport == storage.OutgoingTransportGmail {
@@ -676,7 +715,7 @@ func outgoingSendRetryDelay(attempt int) time.Duration {
 	return delay
 }
 
-func (h *Handler) sendSMTPOutgoingRaw(ctx context.Context, cfg *models.AccountConfig, send storage.OutgoingSend) error {
+func (h *Handler) sendSMTPOutgoingRaw(ctx context.Context, cfg *models.AccountConfig, send storage.OutgoingSend) (smtpclient.DeliveryOutcome, error) {
 	startedAt := time.Now()
 	queueWait := time.Duration(0)
 	if !send.CreatedAt.IsZero() {
@@ -688,7 +727,7 @@ func (h *Handler) sendSMTPOutgoingRaw(ctx context.Context, cfg *models.AccountCo
 	password, err := h.resolvePassword(ctx, cfg, send.AccountID)
 	if err != nil {
 		h.recordSMTPDelivery(models.SendFailed, smtpclient.DeliveryTiming{Total: time.Since(startedAt), QueueWait: queueWait})
-		return fmt.Errorf("failed to get credentials")
+		return smtpclient.DeliveryOutcome{Result: models.SendFailed, DSNRequested: send.DSNRequested}, fmt.Errorf("failed to get credentials")
 	}
 	smtpPassword := password
 	if cfg.SmtpUsername != "" {
@@ -702,40 +741,63 @@ func (h *Handler) sendSMTPOutgoingRaw(ctx context.Context, cfg *models.AccountCo
 // sendIdentitySMTPOutgoingRaw sends a queued message through the own SMTP
 // server of the identity it is sent as, with the server and password the
 // identity has now.
-func (h *Handler) sendIdentitySMTPOutgoingRaw(ctx context.Context, send storage.OutgoingSend, identityID string) error {
+func (h *Handler) sendIdentitySMTPOutgoingRaw(ctx context.Context, send storage.OutgoingSend, identityID string) (smtpclient.DeliveryOutcome, error) {
 	startedAt := time.Now()
 	identities, err := h.db.ListAccountIdentitiesInternal(ctx, send.AccountID)
 	if err != nil {
-		return markOutgoingSendRetryable(err)
+		return smtpclient.DeliveryOutcome{Result: models.SendFailed, DSNRequested: send.DSNRequested}, markOutgoingSendRetryable(err)
 	}
 	cfg, password, err := identitySMTPRoute(ctx, h.accountStore, identities, identityID)
 	if err != nil {
-		return err
+		return smtpclient.DeliveryOutcome{Result: models.SendFailed, DSNRequested: send.DSNRequested}, err
 	}
 	return h.deliverSMTPOutgoing(ctx, cfg, password, send, startedAt, 0)
 }
 
-func (h *Handler) deliverSMTPOutgoing(ctx context.Context, cfg *models.AccountConfig, smtpPassword string, send storage.OutgoingSend, startedAt time.Time, queueWait time.Duration) error {
-	result, err, timing := smtpclient.SendRawMessageWithTiming(ctx, cfg, smtpPassword, send.EnvelopeFrom, send.EnvelopeRecipients, send.MIMEData)
+func (h *Handler) deliverSMTPOutgoing(ctx context.Context, cfg *models.AccountConfig, smtpPassword string, send storage.OutgoingSend, startedAt time.Time, queueWait time.Duration) (smtpclient.DeliveryOutcome, error) {
+	var request *smtpclient.DSNRequest
+	if send.DSNRequested && strings.TrimSpace(send.DSNEnvelopeID) != "" {
+		// Retries keep the original request identity: the queued row owns the
+		// ENVID, this attempt only transmits it.
+		request = &smtpclient.DSNRequest{EnvelopeID: send.DSNEnvelopeID}
+	}
+	outcome, err, timing := smtpclient.SendRawMessageWithDelivery(ctx, cfg, smtpPassword, send.EnvelopeFrom, send.EnvelopeRecipients, send.MIMEData, request)
 	timing.Total = time.Since(startedAt)
 	timing.QueueWait = queueWait
-	h.recordSMTPDelivery(result, timing)
+	h.recordSMTPDelivery(outcome.Result, timing)
 	if err != nil {
-		if result == models.SendAmbiguous {
-			return fmt.Errorf("%w: %v", errOutgoingSendAmbiguous, err)
+		if outcome.Result == models.SendAmbiguous {
+			return outcome, fmt.Errorf("%w: %v", errOutgoingSendAmbiguous, err)
 		}
 		if smtpclient.IsRetryable(err) {
-			return markOutgoingSendRetryable(err)
+			return outcome, markOutgoingSendRetryable(err)
 		}
-		return err
+		return outcome, err
 	}
-	if result == models.SendAmbiguous {
-		return errOutgoingSendAmbiguous
+	if outcome.Result == models.SendAmbiguous {
+		return outcome, errOutgoingSendAmbiguous
 	}
-	if result != models.SendSuccess {
-		return fmt.Errorf("failed to send message")
+	if outcome.Result != models.SendSuccess {
+		return outcome, fmt.Errorf("failed to send message")
 	}
-	return nil
+	return outcome, nil
+}
+
+// recordOutgoingDSNAcceptance stores what the accepting SMTP server granted.
+// It runs for success and ambiguity (a DATA-time loss may still produce
+// reports); pre-acceptance failures record nothing, because the envelope may
+// be retried with the same ENVID.
+func (h *Handler) recordOutgoingDSNAcceptance(ctx context.Context, send storage.OutgoingSend, outcome smtpclient.DeliveryOutcome) {
+	if !send.DSNRequested {
+		return
+	}
+	state := storage.DSNStateUnsupported
+	if outcome.DSNAvailable {
+		state = storage.DSNStateRequested
+	}
+	if err := h.db.RecordDSNAcceptance(ctx, send.ID, state, send.EnvelopeRecipients); err != nil {
+		log.Printf("outgoing-send: record DSN acceptance %s: %v", send.ID, err)
+	}
 }
 
 type smtpDeliveryProfileState struct {
@@ -964,6 +1026,7 @@ func (h *Handler) outgoingMessageFromDraft(ctx context.Context, localMessageID i
 		Subject: email.Subject, TextBody: email.TextBody, HTMLBody: htmlBody,
 		InReplyTo: inReplyTo, References: references, MessageID: message.NewMessageID(),
 		Date: time.Now().UTC(), Attachments: outgoingAttachmentsFromStored(email.Attachments),
+		RequestDSN: h.db.GetDraftDSNOption(ctx, localMessageID),
 	}
 	sender.apply(msg)
 	return msg, nil
@@ -1015,7 +1078,8 @@ func (h *Handler) refreshPendingOutgoingSend(ctx context.Context, saved composeD
 	if len(recipients) == 0 {
 		return fmt.Errorf("no recipients")
 	}
-	return h.db.PrepareOutgoingSend(ctx, existing.ID, saved.DraftID, transport, msg.FromEmail, recipients, raw, snapshotJSON)
+	requestDSN, dsnEnvelopeID := resolveDSNEnqueueExisting(msg, transport, existing.DSNEnvelopeID)
+	return h.db.PrepareOutgoingSend(ctx, existing.ID, saved.DraftID, transport, msg.FromEmail, recipients, raw, snapshotJSON, requestDSN, dsnEnvelopeID)
 }
 
 func (h *Handler) saveSentMessageSnapshot(ctx context.Context, accountID string, msg *message.OutgoingMessage, raw []byte) {

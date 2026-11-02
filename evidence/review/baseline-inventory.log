@@ -1,0 +1,18 @@
+=== RUN   TestUserStorageMigrationInventoryCoversActualRuntimeTablesColumnsAndForeignKeys
+2026/11/02 12:38:21 schema initialized at version 133
+2026/11/02 12:38:21 storage: schema migration check complete
+2026/11/02 12:38:21 storage: threading backfill deferred to background startup worker
+2026/11/02 12:38:21 schema initialized at version 133
+2026/11/02 12:38:21 storage: schema migration check complete
+2026/11/02 12:38:21 storage: threading backfill deferred to background startup worker
+2026/11/02 12:38:21 schema at version 133, no migration needed
+2026/11/02 12:38:21 storage: schema migration check complete
+2026/11/02 12:38:21 storage: threading backfill deferred to background startup worker
+2026/11/02 12:38:22 schema initialized at version 133
+2026/11/02 12:38:22 storage: schema migration check complete
+2026/11/02 12:38:22 storage: threading backfill deferred to background startup worker
+    user_storage_migration_inventory_test.go:116: SQL logic error: invalid uri authority: C: (1)
+--- FAIL: TestUserStorageMigrationInventoryCoversActualRuntimeTablesColumnsAndForeignKeys (0.28s)
+FAIL
+FAIL	github.com/cristianadrielbraun/gofer/internal/storage	0.592s
+FAIL

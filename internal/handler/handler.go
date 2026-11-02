@@ -448,6 +448,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/mail/{id}/calendar/invitation", h.handleMailCalendarInvitation)
 	mux.HandleFunc("GET /email/{id}/body", h.handleEmailBody)
 	mux.HandleFunc("GET /email/{id}/body/translated", h.handleTranslatedEmailBody)
+	mux.HandleFunc("GET /api/messages/{id}/delivery-status", h.handleMessageDeliveryStatus)
 	mux.HandleFunc("GET /folder/{id}", h.handleFolderPartial)
 	mux.HandleFunc("GET /folder/{id}/full", h.handleFolderFull)
 	mux.HandleFunc("GET /folder/{id}/{email}", h.handleFolderWithEmail)
@@ -1703,6 +1704,10 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+
+	// Correlate a cached multipart/report with the send it answers for. The
+	// write is best effort and never changes what the body iframe shows.
+	h.processOpenedDeliveryReport(ctx, h.db, userID, msgID, storageInfo.AccountID, storageInfo.RawPath)
 
 	if loadRemote {
 		body = message.RestoreRemoteContent(body, h.remoteContentLinks(r.Context(), userID, msgID))
@@ -5324,6 +5329,9 @@ func (h *Handler) saveComposeDraftFromForm(ctx context.Context, r *http.Request)
 	if err != nil {
 		return composeDraftSaveResult{}, &composeRequestError{status: http.StatusInternalServerError, message: "failed to save draft"}
 	}
+	if err := h.db.SetDraftDSNOption(ctx, msgID, formRequestsDSN(r)); err != nil {
+		log.Printf("compose: persist DSN draft option message=%d: %v", msgID, err)
+	}
 
 	var textPath, htmlPath string
 	if body != "" {
@@ -5742,6 +5750,10 @@ func (h *Handler) handleGetDraft(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	var requestDSN bool
+	if draftLocalID, err := strconv.ParseInt(email.ID, 10, 64); err == nil {
+		requestDSN = h.db.GetDraftDSNOption(r.Context(), draftLocalID)
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"account_id":    email.AccountID,
@@ -5758,6 +5770,7 @@ func (h *Handler) handleGetDraft(w http.ResponseWriter, r *http.Request) {
 		"references":    email.References,
 		"attachments":   attachments,
 		"inline_images": inlineImages,
+		"request_dsn":   requestDSN,
 	})
 }
 
@@ -5890,6 +5903,7 @@ func (h *Handler) handleCompose(w http.ResponseWriter, r *http.Request) {
 		MessageID:   message.NewMessageID(),
 		Date:        time.Now().UTC(),
 		Attachments: attachments,
+		RequestDSN:  formRequestsDSN(r),
 	}
 	sender.apply(msg)
 	draftID := strings.TrimSpace(r.FormValue("draft_id"))
@@ -6257,6 +6271,9 @@ func (h *Handler) publishMutation(accountID, folderID string) {
 		h.userMutationState.events = append(h.userMutationState.events, mail.Event{
 			Type: mail.EventMutation, UserID: h.userMutationState.owner, AccountID: accountID, FolderID: folderID,
 		})
+		return
+	}
+	if h.syncer == nil {
 		return
 	}
 	h.syncer.Events().Publish(mail.Event{

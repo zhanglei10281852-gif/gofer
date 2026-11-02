@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "passed": true,
+    "reason": ""
+  },
+  {
+    "id": 2,
+    "passed": true,
+    "reason": ""
+  },
+  {
+    "id": 3,
+    "passed": false,
+    "reason": "无效Status值的报告段落被接受并将收件人标为已投递"
+  },
+  {
+    "id": 4,
+    "passed": false,
+    "reason": "接受记录写入失败被吞掉且继续清空快照导致后续报告失去关联"
+  },
+  {
+    "id": 5,
+    "passed": true,
+    "reason": ""
+  },
+  {
+    "id": 6,
+    "passed": true,
+    "reason": ""
+  },
+  {
+    "id": 7,
+    "passed": true,
+    "reason": ""
+  },
+  {
+    "id": 8,
+    "passed": true,
+    "reason": ""
+  }
+]

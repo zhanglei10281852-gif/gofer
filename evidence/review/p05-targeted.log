@@ -1,0 +1,158 @@
+testing: warning: no tests to run
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/mail/dsn	0.981s [no tests to run]
+=== RUN   TestSendRawClassifiesSMTPRepliesBeforeAcceptance
+=== RUN   TestSendRawClassifiesSMTPRepliesBeforeAcceptance/temporary
+=== RUN   TestSendRawClassifiesSMTPRepliesBeforeAcceptance/permanent
+--- PASS: TestSendRawClassifiesSMTPRepliesBeforeAcceptance (0.00s)
+    --- PASS: TestSendRawClassifiesSMTPRepliesBeforeAcceptance/temporary (0.00s)
+    --- PASS: TestSendRawClassifiesSMTPRepliesBeforeAcceptance/permanent (0.00s)
+=== RUN   TestSendRawIsAmbiguousWhenFinalDeliveryReplyTimesOut
+--- PASS: TestSendRawIsAmbiguousWhenFinalDeliveryReplyTimesOut (0.10s)
+=== RUN   TestSendRawClassifiesExplicitFinalDeliveryReply
+=== RUN   TestSendRawClassifiesExplicitFinalDeliveryReply/temporary
+=== RUN   TestSendRawClassifiesExplicitFinalDeliveryReply/permanent
+--- PASS: TestSendRawClassifiesExplicitFinalDeliveryReply (0.00s)
+    --- PASS: TestSendRawClassifiesExplicitFinalDeliveryReply/temporary (0.00s)
+    --- PASS: TestSendRawClassifiesExplicitFinalDeliveryReply/permanent (0.00s)
+=== RUN   TestSendKeepsBccAsEnvelopeOnly
+--- PASS: TestSendKeepsBccAsEnvelopeOnly (0.00s)
+=== RUN   TestDeliverRawRequestsDSNWhenAdvertised
+--- PASS: TestDeliverRawRequestsDSNWhenAdvertised (0.00s)
+=== RUN   TestDeliverRawFallsBackWhenDSNNotAdvertised
+--- PASS: TestDeliverRawFallsBackWhenDSNNotAdvertised (0.00s)
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/mail/smtp	1.175s
+=== RUN   TestBuildMIMEMessageOmitsBccForSMTPEnvelope
+--- PASS: TestBuildMIMEMessageOmitsBccForSMTPEnvelope (0.00s)
+=== RUN   TestBuildMIMEMessageForGraphIncludesBcc
+--- PASS: TestBuildMIMEMessageForGraphIncludesBcc (0.00s)
+=== RUN   TestBuildMIMEMessageForIMAPDraftIncludesRevisionAndBcc
+--- PASS: TestBuildMIMEMessageForIMAPDraftIncludesRevisionAndBcc (0.00s)
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/mail/message	1.329s
+=== RUN   TestDSNAcceptanceSnapshotsEnvelopeIncludingBcc
+2026/11/02 12:29:08 schema initialized at version 134
+2026/11/02 12:29:08 storage: schema migration check complete
+2026/11/02 12:29:08 storage: threading backfill deferred to background startup worker
+--- PASS: TestDSNAcceptanceSnapshotsEnvelopeIncludingBcc (0.14s)
+=== RUN   TestDSNUnsupportedServerSendsPlainState
+2026/11/02 12:29:08 schema initialized at version 134
+2026/11/02 12:29:08 storage: schema migration check complete
+2026/11/02 12:29:08 storage: threading backfill deferred to background startup worker
+--- PASS: TestDSNUnsupportedServerSendsPlainState (0.11s)
+=== RUN   TestDSNReportCorrelationIsIdempotentAndMonotonic
+2026/11/02 12:29:08 schema initialized at version 134
+2026/11/02 12:29:08 storage: schema migration check complete
+2026/11/02 12:29:08 storage: threading backfill deferred to background startup worker
+--- PASS: TestDSNReportCorrelationIsIdempotentAndMonotonic (0.23s)
+=== RUN   TestDSNUnknownEnvelopeStaysOrdinaryMessage
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestDSNUnknownEnvelopeStaysOrdinaryMessage (0.09s)
+=== RUN   TestDSNEnvelopeIDStableAcrossRequeue
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestDSNEnvelopeIDStableAcrossRequeue (0.08s)
+=== RUN   TestDSNCascadesWithSendRetention
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestDSNCascadesWithSendRetention (0.08s)
+=== RUN   TestDeliveryStatusForMessageAnchorsSentAndReport
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestDeliveryStatusForMessageAnchorsSentAndReport (0.08s)
+=== RUN   TestDraftDSNOptionRoundTrip
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestDraftDSNOptionRoundTrip (0.08s)
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/storage	1.283s
+=== RUN   TestQueuedMessageBccByTransport
+=== RUN   TestQueuedMessageBccByTransport/imap
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+=== RUN   TestQueuedMessageBccByTransport/jmap
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestQueuedMessageBccByTransport (0.15s)
+    --- PASS: TestQueuedMessageBccByTransport/imap (0.09s)
+    --- PASS: TestQueuedMessageBccByTransport/jmap (0.07s)
+=== RUN   TestProcessOpenedDeliveryReportEndToEnd
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestProcessOpenedDeliveryReportEndToEnd (0.09s)
+=== RUN   TestProcessOpenedDeliveryReportUnknownEnvelopeStaysOrdinary
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestProcessOpenedDeliveryReportUnknownEnvelopeStaysOrdinary (0.08s)
+=== RUN   TestFormRequestsDSN
+--- PASS: TestFormRequestsDSN (0.00s)
+=== RUN   TestQueueOutgoingMessageBindsDSNOnlyForSMTP
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestQueueOutgoingMessageBindsDSNOnlyForSMTP (0.07s)
+=== RUN   TestGmailIdentitySendsThroughItsOwnServer
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+2026/11/02 12:29:09 outgoing-send: Sent copy 97c8c65d-e775-44c0-9974-e6c497570e5c ambiguous; retry at 2026-11-02T04:29:34Z: google api returned 502: bad gateway
+--- PASS: TestGmailIdentitySendsThroughItsOwnServer (0.10s)
+=== RUN   TestIMAPIdentitySendsThroughItsOwnServerAndKeepsASentCopy
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+--- PASS: TestIMAPIdentitySendsThroughItsOwnServerAndKeepsASentCopy (0.08s)
+=== RUN   TestIdentitySendFailsWhenItsServerIsGone
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+--- PASS: TestIdentitySendFailsWhenItsServerIsGone (0.07s)
+=== RUN   TestOutgoingWorkerRetriesTemporaryGmailFailureWithSameSnapshot
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+2026/11/02 12:29:10 outgoing-send: retry 94941c73-008d-443b-bd4b-0b542e395d54 attempt=1 at=2026-11-02T04:29:31Z: google api returned 503: temporarily unavailable
+--- PASS: TestOutgoingWorkerRetriesTemporaryGmailFailureWithSameSnapshot (0.07s)
+=== RUN   TestSentCopyWorkerAppendsExactMIMEAndLinksRemoteUID
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+--- PASS: TestSentCopyWorkerAppendsExactMIMEAndLinksRemoteUID (0.08s)
+=== RUN   TestInterruptedSentCopySearchesBeforeAppendingAgain
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+--- PASS: TestInterruptedSentCopySearchesBeforeAppendingAgain (0.07s)
+=== RUN   TestUserJMAPQueuedDraftEditKeepsBcc
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+    user_jmap_send_test.go:46: SQL logic error: invalid uri authority: C: (1)
+--- FAIL: TestUserJMAPQueuedDraftEditKeepsBcc (0.31s)
+FAIL
+FAIL	github.com/cristianadrielbraun/gofer/internal/handler	1.538s
+testing: warning: no tests to run
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/views	0.223s [no tests to run]
+FAIL

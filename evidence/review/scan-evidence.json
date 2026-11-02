@@ -1,0 +1,40 @@
+{
+  "id": "cristianadrielbraun-gofer-054af662-5381-4a58-9be2-17e43c0d093b",
+  "expectedSyncRevision": 5,
+  "harness": "Trae",
+  "rounds": 235,
+  "sessionId": "573311172224344:776b79eb044355abd5b77921514aaeeb_6ae7e4c8953ff8a44d4255d4.6ae7e4c8953ff8a44d4255d7.6ae7e4c8953ff8a44d4255d5:TraeCode CN.3.3.104.no_sid.no_ppe.T(2026/11/2 09:18:00)",
+  "effectiveRoundsEvidence": {
+    "source": "count-trae-cn-steps.py",
+    "effectiveRounds": 235,
+    "sessionId": "573311172224344:776b79eb044355abd5b77921514aaeeb_6ae7e4c8953ff8a44d4255d4.6ae7e4c8953ff8a44d4255d7.6ae7e4c8953ff8a44d4255d5:TraeCode CN.3.3.104.no_sid.no_ppe.T(2026/11/2 09:18:00)",
+    "workspace": "F:\\swe\\098872\\project-05",
+    "script": "F:\\swe\\count-trae-cn-steps.py",
+    "scope": "latest_turn",
+    "assistantMessages": 1,
+    "stepsMain": 235,
+    "subagentSteps": 0,
+    "toolBatches": 235,
+    "replies": 0,
+    "compactions": 0,
+    "toolCalls": 301,
+    "uniqueTools": 8,
+    "parallelBatches": 54,
+    "parallelItemsCollapsed": 66,
+    "toolBreakdown": {
+      "Shell": 90,
+      "Write": 7,
+      "edit_file_search_replace": 99,
+      "finish": 1,
+      "search_by_regex": 55,
+      "todo_write": 4,
+      "view_files": 43,
+      "view_folder": 2
+    },
+    "agentBreakdown": {
+      "SOLO": 235
+    },
+    "countingBasis": "agentRunId + reasoningContent response boundaries; consecutive tools stay in one model response",
+    "warnings": []
+  }
+}

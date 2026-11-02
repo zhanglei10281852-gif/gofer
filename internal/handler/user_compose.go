@@ -230,13 +230,17 @@ func (h *Handler) saveUserComposeDraft(ctx context.Context, r *http.Request) (co
 			if err != nil {
 				return c, err
 			}
-			c.Pending = &storage.QueueOutgoingSendInput{ID: pending.ID, AccountID: accountID, DraftID: draftID, Transport: transport, EnvelopeFrom: msg.FromEmail, EnvelopeRecipients: message.AllRecipients(&delivery), MIMEData: mime, MessageJSON: snapshot}
+			requestDSN, dsnEnvelopeID := resolveDSNEnqueueExisting(&delivery, transport, pending.DSNEnvelopeID)
+			c.Pending = &storage.QueueOutgoingSendInput{ID: pending.ID, AccountID: accountID, DraftID: draftID, Transport: transport, EnvelopeFrom: msg.FromEmail, EnvelopeRecipients: message.AllRecipients(&delivery), MIMEData: mime, MessageJSON: snapshot, RequestDSN: requestDSN, DSNEnvelopeID: dsnEnvelopeID}
 		}
 		return c, nil
 	})
 	if err != nil {
 		log.Printf("publish user draft: %v", err)
 		return fail(500, "failed to save draft")
+	}
+	if err := h.db.SetDraftDSNOption(ctx, id, formRequestsDSN(r)); err != nil {
+		log.Printf("compose: persist DSN draft option message=%d: %v", id, err)
 	}
 	success = true
 	h.publishMutation(accountID, folder)

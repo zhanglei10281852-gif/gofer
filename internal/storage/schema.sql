@@ -1631,10 +1631,72 @@ CREATE TABLE IF NOT EXISTS outgoing_sends (
     sent_copy_next_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     sent_copy_uid INTEGER NOT NULL DEFAULT 0,
     sent_copy_uid_validity INTEGER NOT NULL DEFAULT 0,
+    dsn_requested INTEGER NOT NULL DEFAULT 0 CHECK (dsn_requested IN (0, 1)),
+    dsn_envid TEXT NOT NULL DEFAULT '',
+    dsn_state TEXT NOT NULL DEFAULT '' CHECK (dsn_state IN ('', 'requested', 'unsupported')),
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(message_id)
 );
+
+-- Compose-level delivery report request kept with the draft. Local metadata
+-- only: it never becomes a draft header or body.
+CREATE TABLE IF NOT EXISTS draft_send_options (
+    message_id INTEGER PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,
+    dsn_requested INTEGER NOT NULL DEFAULT 0 CHECK (dsn_requested IN (0, 1)),
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- SMTP Delivery Status Notification (RFC 3461/3464) support. The envelope
+-- snapshot - including Bcc recipients - survives MIME cleanup for the send's
+-- retention period and disappears when outgoing_sends is pruned.
+CREATE TABLE IF NOT EXISTS outgoing_dsn_envelopes (
+    send_id TEXT PRIMARY KEY REFERENCES outgoing_sends(id) ON DELETE CASCADE,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    envid TEXT NOT NULL CHECK (envid <> ''),
+    envelope_from TEXT NOT NULL DEFAULT '',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_outgoing_dsn_envelopes_lookup
+ON outgoing_dsn_envelopes(account_id, envid);
+
+CREATE TABLE IF NOT EXISTS outgoing_dsn_recipients (
+    send_id TEXT NOT NULL REFERENCES outgoing_sends(id) ON DELETE CASCADE,
+    address TEXT NOT NULL,
+    state TEXT NOT NULL DEFAULT 'waiting' CHECK (state IN ('waiting', 'delayed', 'delivered', 'failed')),
+    status_code TEXT NOT NULL DEFAULT '',
+    diagnostic TEXT NOT NULL DEFAULT '',
+    report_message_id TEXT NOT NULL DEFAULT '',
+    reported_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (send_id, address)
+);
+
+CREATE INDEX IF NOT EXISTS idx_outgoing_dsn_recipients_send
+ON outgoing_dsn_recipients(send_id, state);
+
+CREATE TABLE IF NOT EXISTS outgoing_dsn_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    message_local_id INTEGER REFERENCES messages(id) ON DELETE CASCADE,
+    report_key TEXT NOT NULL CHECK (report_key <> ''),
+    send_id TEXT REFERENCES outgoing_sends(id) ON DELETE CASCADE,
+    envid TEXT NOT NULL DEFAULT '',
+    correlation TEXT NOT NULL CHECK (correlation IN ('correlated', 'unrecognized', 'not_report')),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_outgoing_dsn_reports_key
+ON outgoing_dsn_reports(account_id, report_key);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_outgoing_dsn_reports_message
+ON outgoing_dsn_reports(message_local_id) WHERE message_local_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_outgoing_dsn_reports_send
+ON outgoing_dsn_reports(send_id) WHERE send_id IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_outgoing_sends_due
 ON outgoing_sends(status, next_attempt_at, send_after);

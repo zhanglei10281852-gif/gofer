@@ -1097,6 +1097,7 @@ templ MailViewBodyByID(emailID string) {
 				}
 			</div>
 	</div>
+	<div data-dsn-delivery-panel={ emailID }></div>
 	<div data-email-translation-shell={ emailID } class="mb-3">
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			@EmailBodyStyleTabs(emailID, false, "h-7", "h-6")

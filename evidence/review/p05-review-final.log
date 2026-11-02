@@ -1,0 +1,93 @@
+=== RUN   TestReviewMalformedDSNBlockDoesNotAlterState
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:13: real GET body HTTP=200 malformed=delivered valid=delayed
+    zz_delivery_review_test.go:13: Rubric 3: invalid Status accepted as delivered
+--- FAIL: TestReviewMalformedDSNBlockDoesNotAlterState (0.08s)
+=== RUN   TestReviewDSNTransactionRollbackAndCachedRetry
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+2026/11/02 12:35:18 outgoing-dsn: process report for message 902: constraint failed: review injected marker insert failure (1811)
+    zz_delivery_review_test.go:19: body HTTP=200; failed transaction leaves 0 markers; cached reopen delivered; original outgoing count=1
+--- PASS: TestReviewDSNTransactionRollbackAndCachedRetry (0.07s)
+=== RUN   TestReviewAcceptanceFailureLosesCorrelationAfterCleanup
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+2026/11/02 12:35:18 outgoing-send: record DSN acceptance cb10826b-7281-457d-9e78-bb088115c897: constraint failed: review acceptance persistence failure (1811)
+    zz_delivery_review_test.go:30: SMTP submissions=1 send=sent copy=complete MIME_bytes=0 envelope_rows=0 recipients=0 report_HTTP=200
+    zz_delivery_review_test.go:31: Rubric 4: acceptance transaction failure is logged, cleanup clears MIME, later valid report has no envelope association
+--- FAIL: TestReviewAcceptanceFailureLosesCorrelationAfterCleanup (0.10s)
+=== RUN   TestReviewRawMissingRetryAndRestartIdempotence
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:41: raw missing -> waiting and marker=0; restored -> delivered; DB reopened + duplicate report -> delivered; outgoing=1
+--- PASS: TestReviewRawMissingRetryAndRestartIdempotence (0.13s)
+=== RUN   TestReviewMalformedDSNBlockDoesNotAlterState
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:13: real GET body HTTP=200 malformed=delivered valid=delayed
+    zz_delivery_review_test.go:13: Rubric 3: invalid Status accepted as delivered
+--- FAIL: TestReviewMalformedDSNBlockDoesNotAlterState (0.08s)
+=== RUN   TestReviewDSNTransactionRollbackAndCachedRetry
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+2026/11/02 12:35:18 outgoing-dsn: process report for message 902: constraint failed: review injected marker insert failure (1811)
+    zz_delivery_review_test.go:19: body HTTP=200; failed transaction leaves 0 markers; cached reopen delivered; original outgoing count=1
+--- PASS: TestReviewDSNTransactionRollbackAndCachedRetry (0.09s)
+=== RUN   TestReviewAcceptanceFailureLosesCorrelationAfterCleanup
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+2026/11/02 12:35:18 outgoing-send: record DSN acceptance f6f07fb1-dae4-4a5a-b27d-462326031e0a: constraint failed: review acceptance persistence failure (1811)
+    zz_delivery_review_test.go:30: SMTP submissions=1 send=sent copy=complete MIME_bytes=0 envelope_rows=0 recipients=0 report_HTTP=200
+    zz_delivery_review_test.go:31: Rubric 4: acceptance transaction failure is logged, cleanup clears MIME, later valid report has no envelope association
+--- FAIL: TestReviewAcceptanceFailureLosesCorrelationAfterCleanup (0.08s)
+=== RUN   TestReviewRawMissingRetryAndRestartIdempotence
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:41: raw missing -> waiting and marker=0; restored -> delivered; DB reopened + duplicate report -> delivered; outgoing=1
+--- PASS: TestReviewRawMissingRetryAndRestartIdempotence (0.11s)
+=== RUN   TestReviewMalformedDSNBlockDoesNotAlterState
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:13: real GET body HTTP=200 malformed=delivered valid=delayed
+    zz_delivery_review_test.go:13: Rubric 3: invalid Status accepted as delivered
+--- FAIL: TestReviewMalformedDSNBlockDoesNotAlterState (0.08s)
+=== RUN   TestReviewDSNTransactionRollbackAndCachedRetry
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+2026/11/02 12:35:18 outgoing-dsn: process report for message 902: constraint failed: review injected marker insert failure (1811)
+    zz_delivery_review_test.go:19: body HTTP=200; failed transaction leaves 0 markers; cached reopen delivered; original outgoing count=1
+--- PASS: TestReviewDSNTransactionRollbackAndCachedRetry (0.08s)
+=== RUN   TestReviewAcceptanceFailureLosesCorrelationAfterCleanup
+2026/11/02 12:35:19 schema initialized at version 134
+2026/11/02 12:35:19 storage: schema migration check complete
+2026/11/02 12:35:19 storage: threading backfill deferred to background startup worker
+2026/11/02 12:35:19 outgoing-send: record DSN acceptance f88508fb-3e8f-4680-a26d-72999178da9e: constraint failed: review acceptance persistence failure (1811)
+    zz_delivery_review_test.go:30: SMTP submissions=1 send=sent copy=complete MIME_bytes=0 envelope_rows=0 recipients=0 report_HTTP=200
+    zz_delivery_review_test.go:31: Rubric 4: acceptance transaction failure is logged, cleanup clears MIME, later valid report has no envelope association
+--- FAIL: TestReviewAcceptanceFailureLosesCorrelationAfterCleanup (0.08s)
+=== RUN   TestReviewRawMissingRetryAndRestartIdempotence
+2026/11/02 12:35:19 schema initialized at version 134
+2026/11/02 12:35:19 storage: schema migration check complete
+2026/11/02 12:35:19 storage: threading backfill deferred to background startup worker
+2026/11/02 12:35:19 storage: schema migration check complete
+2026/11/02 12:35:19 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:41: raw missing -> waiting and marker=0; restored -> delivered; DB reopened + duplicate report -> delivered; outgoing=1
+--- PASS: TestReviewRawMissingRetryAndRestartIdempotence (0.11s)
+FAIL
+FAIL	github.com/cristianadrielbraun/gofer/internal/handler	1.597s
+FAIL

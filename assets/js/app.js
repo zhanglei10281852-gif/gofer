@@ -9205,11 +9205,28 @@ function outgoingSendStatusError(summary) {
   return summary.last_error || summary.sent_copy_last_error || ""
 }
 
+// outgoingSendDSNTitle summarizes requested DSN results for the status badge:
+// the unsupported case is explicit, and waiting recipients never read as
+// delivered or failed.
+function outgoingSendDSNTitle(summary) {
+  if (!summary || !summary.dsn_requested) return ""
+  if (summary.dsn_state === "unsupported") {
+    return "The SMTP server doesn't support delivery reports; sent without per-recipient status."
+  }
+  if (summary.dsn_state !== "requested" || !summary.dsn_recipients || !summary.dsn_recipients.length) return ""
+  var labels = { waiting: "waiting", delayed: "delayed", delivered: "delivered", failed: "failed" }
+  return summary.dsn_recipients.map(function (r) {
+    return r.address + ": " + (labels[r.state] || r.state || "waiting")
+  }).join("\n")
+}
+
 function outgoingSendStatusMarkup(summary) {
   var label = outgoingSendStatusLabel(summary)
   if (!label) return ""
   var error = outgoingSendStatusError(summary)
-  var title = error ? " title=\"" + outgoingStatusEscape(error) + "\"" : ""
+  var dsnTitle = outgoingSendDSNTitle(summary)
+  var titleText = [error, dsnTitle].filter(Boolean).join("\n")
+  var title = titleText ? " title=\"" + outgoingStatusEscape(titleText) + "\"" : ""
   var html = '<span data-outgoing-status="" class="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium ' + outgoingSendStatusClasses(summary) + '"' + title + '>' + outgoingStatusEscape(label) + '</span>'
   var actions = []
   if (summary.can_retry) actions.push({ action: "retry", label: "Retry" })
@@ -15356,6 +15373,7 @@ function deactivateComposeOneTimeFrom(form, animate) {
 // sends while the row is off, as they empty only once it has closed.
 var _composeOneTimeFieldNames = { one_time_from: true, from_name: true, from_email: true, send_via: true }
 function _composeSkipsField(form, input) {
+  if (input.type === "checkbox" && !input.checked) return true
   return !!_composeOneTimeFieldNames[input.name] && !composeOneTimeActive(form)
 }
 
@@ -15569,6 +15587,8 @@ function resetComposeForm(fromPane, skipCleanup) {
   syncComposeInlineImageInputs(form)
   var recipientFields = form.querySelectorAll("[data-compose-recipient-field]")
   for (var i = 0; i < recipientFields.length; i++) renderComposeRecipientField(recipientFields[i], "")
+  var dsnBoxes = form.querySelectorAll('input[name="request_dsn"]')
+  for (var d = 0; d < dsnBoxes.length; d++) dsnBoxes[d].checked = false
   renderComposeAttachments(form, [])
   form.dataset.composeUploadsPending = "0"
   form.dataset.composeSending = "false"
@@ -17918,6 +17938,7 @@ function _composeValsFromDraft(draft) {
     references: draft.references || "",
     attachments: draft.attachments || [],
     inline_images: draft.inline_images || [],
+    request_dsn: draft.request_dsn === true ? "1" : "",
     _ccVisible: !!(draft.cc && draft.cc.trim()),
     _bccVisible: !!(draft.bcc && draft.bcc.trim()),
     _composeDirty: "false"
@@ -20920,6 +20941,82 @@ function downloadEmailFile(emailId, href) {
   link.remove()
 }
 
+// Delivery status panel: shows per-recipient DSN results on the sender's own
+// Sent message and on a correlated delivery report. Server acceptance and
+// reports stay separate: "waiting" never means delivered or failed.
+var DELIVERY_STATE_LABELS = { waiting: "Waiting for report", delayed: "Delayed", delivered: "Delivered", failed: "Failed" }
+var DELIVERY_STATE_CLASSES = {
+  waiting: "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  delayed: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  delivered: "border-emerald-600/30 bg-emerald-600/10 text-emerald-700 dark:text-emerald-400",
+  failed: "border-destructive/30 bg-destructive/10 text-destructive"
+}
+
+function refreshDeliveryStatusPanel(emailId) {
+  var panel = document.querySelector('[data-dsn-delivery-panel="' + String(emailId).replace(/"/g, '\\"') + '"]')
+  if (!panel || panel._dsnLoading === emailId) return
+  panel._dsnLoading = emailId
+  fetch("/api/messages/" + encodeURIComponent(emailId) + "/delivery-status", { headers: { Accept: "application/json" }, credentials: "same-origin" })
+    .then(function (r) { return r.ok ? r.json() : null })
+    .then(function (status) {
+      if (panel._dsnLoading !== emailId) return
+      delete panel._dsnLoading
+      renderDeliveryStatusPanel(panel, status)
+    })
+    .catch(function () { delete panel._dsnLoading })
+}
+
+function renderDeliveryStatusPanel(panel, status) {
+  panel.innerHTML = ""
+  if (!status || !status.kind || (!status.recipients || !status.recipients.length) && status.dsn_state !== "unsupported") return
+  var card = document.createElement("div")
+  card.className = "mb-3 rounded-lg border border-ink/10 bg-ink/[0.02] px-4 py-3"
+  card.setAttribute("data-dsn-card", "")
+  var heading = document.createElement("p")
+  heading.className = "text-[13px] font-medium text-ink"
+  if (status.kind === "report") {
+    heading.textContent = "Delivery report"
+  } else if (status.dsn_state === "unsupported") {
+    heading.textContent = "No delivery reports available"
+  } else {
+    heading.textContent = "Delivery status notifications"
+  }
+  card.appendChild(heading)
+  if (status.dsn_state === "unsupported") {
+    var note = document.createElement("p")
+    note.className = "mt-1 text-xs leading-relaxed text-muted-foreground"
+    note.textContent = status.kind === "report"
+      ? "The original server didn't provide per-recipient delivery status."
+      : "The sending SMTP server doesn't support delivery reports, so this message was sent normally without per-recipient status."
+    card.appendChild(note)
+  }
+  if (status.recipients && status.recipients.length) {
+    var list = document.createElement("ul")
+    list.className = "mt-2 space-y-1.5"
+    status.recipients.forEach(function (recipient) {
+      var row = document.createElement("li")
+      row.className = "flex flex-wrap items-center gap-2 text-xs"
+      var address = document.createElement("span")
+      address.className = "font-medium text-ink"
+      address.textContent = recipient.address
+      var state = document.createElement("span")
+      state.className = "inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium " + (DELIVERY_STATE_CLASSES[recipient.state] || DELIVERY_STATE_CLASSES.waiting)
+      state.textContent = DELIVERY_STATE_LABELS[recipient.state] || DELIVERY_STATE_LABELS.waiting
+      row.appendChild(address)
+      row.appendChild(state)
+      if (recipient.diagnostic) {
+        var detail = document.createElement("span")
+        detail.className = "w-full break-words text-muted-foreground"
+        detail.textContent = recipient.diagnostic + (recipient.status_code ? " (" + recipient.status_code + ")" : "")
+        row.appendChild(detail)
+      }
+      list.appendChild(row)
+    })
+    card.appendChild(list)
+  }
+  panel.appendChild(card)
+}
+
 window.addEventListener("message", function (e) {
   if (!e.data || !e.data.type) return
   var iframe = emailBodyFrameFor(e.source)
@@ -20938,6 +21035,7 @@ window.addEventListener("message", function (e) {
     var loader = document.querySelector('[data-email-body-loading="' + emailId + '"]')
     if (loader) loader.remove()
     clearEmailBodyError(emailId)
+    refreshDeliveryStatusPanel(emailId)
     if (iframe.dataset.translationActive === "true" && typeof window.goferEmailTranslationFrameLoaded === "function") {
       window.goferEmailTranslationFrameLoaded(emailId)
     }
@@ -21439,7 +21537,11 @@ function _writeComposeFormValues(form, vals, prefix) {
   var inputs = form.querySelectorAll("input, textarea")
   for (var i = 0; inputs && i < inputs.length; i++) {
     if (inputs[i].name && vals[inputs[i].name] !== undefined) {
-      inputs[i].value = vals[inputs[i].name]
+      if (inputs[i].type === "checkbox") {
+        inputs[i].checked = vals[inputs[i].name] === "1" || vals[inputs[i].name] === true
+      } else {
+        inputs[i].value = vals[inputs[i].name]
+      }
     }
   }
   renderComposeRecipientFields(form)

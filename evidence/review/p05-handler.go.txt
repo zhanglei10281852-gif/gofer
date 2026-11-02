@@ -1,0 +1,42 @@
+package handler
+import ("os";"fmt";"net/http/httptest";"testing";"github.com/cristianadrielbraun/gofer/internal/auth";"github.com/cristianadrielbraun/gofer/internal/storage")
+func reviewDSNSetup(t *testing.T)(*Handler,*storage.DB,string){
+ h,db:=newDSNProcessorHandler(t);s,e:=db.QueueOutgoingSend(t.Context(),storage.QueueOutgoingSendInput{ID:"review-send",AccountID:"acc",Transport:"smtp",EnvelopeFrom:"user@example.com",EnvelopeRecipients:[]string{"bad@example.org","good@example.org"},MIMEData:[]byte("body"),MessageJSON:[]byte("{}"),RequestDSN:true,DSNEnvelopeID:"review-env"});if e!=nil{t.Fatal(e)};if e=db.RecordDSNAcceptance(t.Context(),s.ID,storage.DSNStateRequested,s.EnvelopeRecipients);e!=nil{t.Fatal(e)};return h,db,s.ID
+}
+func reviewDSNOpen(t *testing.T,h *Handler,db *storage.DB,id int64,raw []byte)int{
+ insertIncomingMessage(t,db,id,fmt.Sprintf("<review%d@example.org>",id));p,e:=h.blobStore.StoreRaw(t.Context(),"acc",id,raw);if e!=nil{t.Fatal(e)};b,e:=h.blobStore.StoreBodyText(t.Context(),"acc",id,[]byte("Original report remains readable"));if e!=nil{t.Fatal(e)}
+ if e=db.UpdateMessageBodyInternal(t.Context(),id,b,"",p,"report",int64(len(raw)));e!=nil{t.Fatal(e)};return reviewDSNReopen(t,h,id)
+}
+func reviewDSNReopen(t *testing.T,h *Handler,id int64)int{r:=httptest.NewRequest("GET",fmt.Sprintf("/email/%d/body",id),nil);r.SetPathValue("id",fmt.Sprint(id));r=r.WithContext(auth.ContextWithUser(r.Context(),&auth.User{ID:"default",Username:"default"}));w:=httptest.NewRecorder();h.handleEmailBody(w,r);return w.Code}
+func TestReviewMalformedDSNBlockDoesNotAlterState(t *testing.T){
+ h,db,id:=reviewDSNSetup(t);raw:=dsnReportMIME("malformed@example.org","review-env","Final-Recipient: rfc822; bad@example.org\r\nAction: delivered\r\nStatus: nonsense","Final-Recipient: rfc822; good@example.org\r\nAction: delayed\r\nStatus: 4.4.1")
+ code:=reviewDSNOpen(t,h,db,901,raw);rs,e:=db.DSNRecipientsForSend(t.Context(),id);if e!=nil{t.Fatal(e)};states:=map[string]string{};for _,r:=range rs{states[r.Address]=r.State};t.Logf("real GET body HTTP=%d malformed=%s valid=%s",code,states["bad@example.org"],states["good@example.org"]);if code!=200{t.Fatalf("body=%d",code)};if states["bad@example.org"]!="waiting"{t.Errorf("Rubric 3: invalid Status accepted as %s",states["bad@example.org"])};if states["good@example.org"]!="delayed"{t.Errorf("valid block not processed")}
+}
+func TestReviewDSNTransactionRollbackAndCachedRetry(t *testing.T){
+ h,db,id:=reviewDSNSetup(t);_,err:=db.Write().Exec("CREATE TRIGGER review_fail_report BEFORE INSERT ON outgoing_dsn_reports BEGIN SELECT RAISE(ABORT,'review injected marker insert failure'); END");if err!=nil{t.Fatal(err)}
+ raw:=dsnReportMIME("retry@example.org","review-env","Final-Recipient: rfc822; good@example.org\r\nAction: delivered\r\nStatus: 2.0.0")
+ if c:=reviewDSNOpen(t,h,db,902,raw);c!=200{t.Fatalf("HTTP=%d",c)};rs,_:=db.DSNRecipientsForSend(t.Context(),id);for _,r:=range rs{if r.State!="waiting"{t.Fatal("failed transaction changed recipient")}};var n int;db.Read().QueryRow("SELECT COUNT(*) FROM outgoing_dsn_reports").Scan(&n);if n!=0{t.Fatal("failed transaction left marker")}
+ db.Write().Exec("DROP TRIGGER review_fail_report");if c:=reviewDSNReopen(t,h,902);c!=200{t.Fatal(c)};rs,_=db.DSNRecipientsForSend(t.Context(),id);for _,r:=range rs{if r.Address=="good@example.org"&&r.State!="delivered"{t.Fatal(r)}};db.Read().QueryRow("SELECT COUNT(*) FROM outgoing_sends").Scan(&n);if n!=1{t.Fatal("retry added sends")};t.Log("body HTTP=200; failed transaction leaves 0 markers; cached reopen delivered; original outgoing count=1")
+}
+
+func TestReviewAcceptanceFailureLosesCorrelationAfterCleanup(t *testing.T){
+ h,db,_:=newGmailOutgoingTestHandler(t,"user@example.com");server:=newRecordingSMTPServer(t);identity:=ownSMTPIdentity(t,h,"default","acc",server);send:=queueAsIdentity(t,h,"acc",identity,"DSN durability review")
+ if _,e:=db.Write().Exec("UPDATE outgoing_sends SET dsn_requested=1,dsn_envid='review-accepted-env',dsn_state='' WHERE id=?",send.ID);e!=nil{t.Fatal(e)}
+ if _,e:=db.Write().Exec("CREATE TRIGGER review_fail_accept BEFORE INSERT ON outgoing_dsn_envelopes BEGIN SELECT RAISE(ABORT,'review acceptance persistence failure'); END");e!=nil{t.Fatal(e)}
+ h.runDueOutgoingSends(t.Context());h.runDueSentCopies(t.Context());done,e:=db.GetOutgoingSend(t.Context(),send.ID);if e!=nil{t.Fatal(e)};if done.Status!="sent"||done.SentCopyStatus!="complete"{t.Fatalf("send=%s copy=%s err=%s",done.Status,done.SentCopyStatus,done.SentCopyLastError)}
+ if _,e=db.Write().Exec("DROP TRIGGER review_fail_accept");e!=nil{t.Fatal(e)}
+ raw:=dsnReportMIME("accepted-review@example.org","review-accepted-env","Final-Recipient: rfc822; recipient@example.com\r\nAction: delivered\r\nStatus: 2.0.0")
+ c:=reviewDSNOpen(t,h,db,99001,raw);rs,e:=db.DSNRecipientsForSend(t.Context(),send.ID);if e!=nil{t.Fatal(e)};var n int;db.Read().QueryRow("SELECT COUNT(*) FROM outgoing_dsn_envelopes WHERE send_id=?",send.ID).Scan(&n)
+ t.Logf("SMTP submissions=%d send=%s copy=%s MIME_bytes=%d envelope_rows=%d recipients=%d report_HTTP=%d",len(server.messages()),done.Status,done.SentCopyStatus,len(done.MIMEData),n,len(rs),c)
+ if c!=200{t.Fatal(c)};if len(rs)==0{t.Errorf("Rubric 4: acceptance transaction failure is logged, cleanup clears MIME, later valid report has no envelope association")}
+}
+
+func TestReviewRawMissingRetryAndRestartIdempotence(t *testing.T){
+ h,db,id:=reviewDSNSetup(t);raw:=dsnReportMIME("restart-review@example.org","review-env","Final-Recipient: rfc822; good@example.org\r\nAction: delivered\r\nStatus: 2.0.0")
+ insertIncomingMessage(t,db,903,"<restart-review@example.org>");path,e:=h.blobStore.StoreRaw(t.Context(),"acc",903,raw);if e!=nil{t.Fatal(e)};body,e:=h.blobStore.StoreBodyText(t.Context(),"acc",903,[]byte("Original report"));if e!=nil{t.Fatal(e)};if e=db.UpdateMessageBodyInternal(t.Context(),903,body,"",path,"report",int64(len(raw)));e!=nil{t.Fatal(e)};if e=os.Remove(path);e!=nil{t.Fatal(e)}
+ if c:=reviewDSNReopen(t,h,903);c!=200{t.Fatal(c)};var count int;db.Read().QueryRow("SELECT COUNT(*) FROM outgoing_dsn_reports").Scan(&count);if count!=0{t.Fatal("missing raw marked consumed")};rs,_:=db.DSNRecipientsForSend(t.Context(),id);for _,r:=range rs{if r.State!="waiting"{t.Fatal("missing raw changed result")}}
+ if e=os.WriteFile(path,raw,0600);e!=nil{t.Fatal(e)};if c:=reviewDSNReopen(t,h,903);c!=200{t.Fatal(c)}
+ var seq int;var name,file string;if e=db.Read().QueryRow("PRAGMA database_list").Scan(&seq,&name,&file);e!=nil{t.Fatal(e)};if e=db.Close();e!=nil{t.Fatal(e)};db2,e:=storage.New(file);if e!=nil{t.Fatal(e)};t.Cleanup(func(){db2.Close()});h.db=db2
+ if c:=reviewDSNReopen(t,h,903);c!=200{t.Fatal(c)};copyRaw:=dsnReportMIME("restart-review@example.org","review-env","Final-Recipient: rfc822; good@example.org\r\nAction: delayed\r\nStatus: 4.4.1");if c:=reviewDSNOpen(t,h,db2,904,copyRaw);c!=200{t.Fatal(c)}
+ rs,_=db2.DSNRecipientsForSend(t.Context(),id);for _,r:=range rs{if r.Address=="good@example.org"&&r.State!="delivered"{t.Fatal(r)}};db2.Read().QueryRow("SELECT COUNT(*) FROM outgoing_sends").Scan(&count);if count!=1{t.Fatal(count)};t.Log("raw missing -> waiting and marker=0; restored -> delivered; DB reopened + duplicate report -> delivered; outgoing=1")
+}

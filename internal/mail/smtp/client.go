@@ -219,6 +219,25 @@ func dialSMTP(ctx context.Context, dialer *net.Dialer, cfg *models.AccountConfig
 	return conn, nil
 }
 
+// DSNRequest asks an SMTP server for Delivery Status Notifications bound to
+// one envelope. EnvelopeID is the ENVID the later reports must answer for.
+type DSNRequest struct {
+	EnvelopeID string
+}
+
+// DeliveryOutcome keeps the server's acceptance result separate from whether
+// delivery reports were actually requested: a DSN-capable server may accept
+// the message, and the absence of later reports never means delivered or
+// failed.
+type DeliveryOutcome struct {
+	Result models.SendResult
+	// DSNRequested is set when the caller asked for delivery notifications.
+	DSNRequested bool
+	// DSNAvailable is set only when the accepting server advertised DSN and
+	// the ENVID and per-recipient NOTIFY parameters were transmitted.
+	DSNAvailable bool
+}
+
 func (c *Client) Send(ctx context.Context, msg *message.OutgoingMessage) (models.SendResult, error) {
 	recipients := message.AllRecipients(msg)
 	if len(recipients) == 0 {
@@ -232,21 +251,31 @@ func (c *Client) Send(ctx context.Context, msg *message.OutgoingMessage) (models
 }
 
 func (c *Client) SendRaw(ctx context.Context, from string, recipients []string, mimeData []byte) (models.SendResult, error) {
+	outcome, err := c.DeliverRaw(ctx, from, recipients, mimeData, nil)
+	return outcome.Result, err
+}
+
+// DeliverRaw sends one message, optionally binding an ENVID and per-recipient
+// NOTIFY requests when the server advertises DSN. When it does not, the
+// message is still sent as ordinary mail; the outcome says reports could not
+// be requested so callers can show that instead of guessing delivery.
+func (c *Client) DeliverRaw(ctx context.Context, from string, recipients []string, mimeData []byte, request *DSNRequest) (DeliveryOutcome, error) {
+	outcome := DeliveryOutcome{Result: models.SendFailed}
 	if len(recipients) == 0 {
-		return models.SendFailed, markDeliveryError(fmt.Errorf("no recipients"), false)
+		return outcome, markDeliveryError(fmt.Errorf("no recipients"), false)
 	}
 	ctx = nonNilContext(ctx)
 	sendCtx, cancelSend := context.WithTimeout(ctx, outgoingMessageTimeout)
 	defer cancelSend()
 	if err := sendCtx.Err(); err != nil {
-		return models.SendFailed, markDeliveryError(err, true)
+		return outcome, markDeliveryError(err, true)
 	}
 	stopCancellation := context.AfterFunc(sendCtx, func() { _ = c.conn.Close() })
 	defer stopCancellation()
 
 	messageSize := int64(len(mimeData))
 	if maxSize, ok := c.client.MaxMessageSize(); ok && maxSize > 0 && messageSize > int64(maxSize) {
-		return models.SendFailed, markDeliveryError(fmt.Errorf("message is %d bytes, but the SMTP server accepts at most %d bytes", messageSize, maxSize), false)
+		return outcome, markDeliveryError(fmt.Errorf("message is %d bytes, but the SMTP server accepts at most %d bytes", messageSize, maxSize), false)
 	}
 
 	requiresSMTPUTF8 := smtpEnvelopeRequiresUTF8(from, recipients)
@@ -254,49 +283,77 @@ func (c *Client) SendRaw(ctx context.Context, from string, recipients []string, 
 		Size: messageSize,
 		UTF8: requiresSMTPUTF8,
 	}
+	if request != nil && strings.TrimSpace(request.EnvelopeID) != "" {
+		outcome.DSNRequested = true
+		if ok, _ := c.client.Extension("DSN"); ok {
+			outcome.DSNAvailable = true
+			mailOptions.Return = smtp.DSNReturnHeaders
+			mailOptions.EnvelopeID = strings.TrimSpace(request.EnvelopeID)
+		}
+	}
 	if err := c.client.Mail(from, mailOptions); err != nil {
 		mailErr := fmt.Errorf("mail from: %w", contextError(sendCtx, err))
 		if requiresSMTPUTF8 && strings.Contains(strings.ToLower(mailErr.Error()), "server does not support smtputf8") {
-			return models.SendFailed, markDeliveryError(fmt.Errorf("SMTPUTF8 is required for %s, but the server does not advertise SMTPUTF8", smtpUTF8RequirementDescription(from, recipients)), false)
+			return outcome, markDeliveryError(fmt.Errorf("SMTPUTF8 is required for %s, but the server does not advertise SMTPUTF8", smtpUTF8RequirementDescription(from, recipients)), false)
 		}
-		return models.SendFailed, classifyPreAcceptanceError(mailErr)
+		return outcome, classifyPreAcceptanceError(mailErr)
 	}
 
 	for _, rcpt := range recipients {
-		if err := c.client.Rcpt(rcpt, nil); err != nil {
-			return models.SendFailed, classifyPreAcceptanceError(fmt.Errorf("rcpt to %s: %w", rcpt, contextError(sendCtx, err)))
+		if err := c.client.Rcpt(rcpt, smtpRcptOptions(outcome.DSNAvailable, rcpt)); err != nil {
+			return outcome, classifyPreAcceptanceError(fmt.Errorf("rcpt to %s: %w", rcpt, contextError(sendCtx, err)))
 		}
 	}
 
 	dataw, err := c.client.Data()
 	if err != nil {
-		return models.SendFailed, classifyPreAcceptanceError(fmt.Errorf("data: %w", contextError(sendCtx, err)))
+		return outcome, classifyPreAcceptanceError(fmt.Errorf("data: %w", contextError(sendCtx, err)))
 	}
 	if err := c.conn.SetDeadline(deadlineForContext(sendCtx, submissionTimeout)); err != nil {
 		_ = c.conn.Close()
-		return models.SendFailed, markDeliveryError(fmt.Errorf("set data deadline: %w", contextError(sendCtx, err)), true)
+		return outcome, markDeliveryError(fmt.Errorf("set data deadline: %w", contextError(sendCtx, err)), true)
 	}
 
 	if _, err := dataw.Write(mimeData); err != nil {
 		_ = c.conn.Close()
-		return models.SendAmbiguous, fmt.Errorf("write data: %w", contextError(sendCtx, err))
+		outcome.Result = models.SendAmbiguous
+		return outcome, fmt.Errorf("write data: %w", contextError(sendCtx, err))
 	}
 
 	if err := dataw.Close(); err != nil {
 		var smtpErr *smtp.SMTPError
 		if errors.As(err, &smtpErr) {
-			return models.SendFailed, classifyPreAcceptanceError(fmt.Errorf("close data: %w", contextError(sendCtx, err)))
+			return outcome, classifyPreAcceptanceError(fmt.Errorf("close data: %w", contextError(sendCtx, err)))
 		}
-		return models.SendAmbiguous, fmt.Errorf("close data: %w", contextError(sendCtx, err))
+		outcome.Result = models.SendAmbiguous
+		return outcome, fmt.Errorf("close data: %w", contextError(sendCtx, err))
 	}
 
-	return models.SendSuccess, nil
+	outcome.Result = models.SendSuccess
+	return outcome, nil
+}
+
+// smtpRcptOptions builds per-recipient DSN options. NOTIFY asks for every
+// outcome; ORCPT names the original address for ASCII mailboxes so reports
+// can be matched after forwarding, but is omitted where encoding could fail.
+func smtpRcptOptions(dsnAvailable bool, rcpt string) *smtp.RcptOptions {
+	if !dsnAvailable {
+		return nil
+	}
+	options := &smtp.RcptOptions{
+		Notify: []smtp.DSNNotify{smtp.DSNNotifySuccess, smtp.DSNNotifyFailure, smtp.DSNNotifyDelayed},
+	}
+	if !smtpAddressRequiresUTF8(rcpt) {
+		options.OriginalRecipientType = smtp.DSNAddressTypeRFC822
+		options.OriginalRecipient = rcpt
+	}
+	return options
 }
 
 func (c *Client) sendRawWithTiming(ctx context.Context, from string, recipients []string, mimeData []byte) (models.SendResult, error, DeliveryTiming) {
 	startedAt := time.Now()
-	result, err := c.SendRaw(ctx, from, recipients, mimeData)
-	return result, err, DeliveryTiming{
+	outcome, err := c.DeliverRaw(ctx, from, recipients, mimeData, nil)
+	return outcome.Result, err, DeliveryTiming{
 		Data:                  time.Since(startedAt),
 		Total:                 time.Since(startedAt),
 		ConnectionEstablished: true,
@@ -359,23 +416,31 @@ func SendRawMessage(ctx context.Context, cfg *models.AccountConfig, password, fr
 	return result, err
 }
 
-// SendRawMessageWithTiming sends one message with a fresh SMTP connection and
-// returns timing data for profiling. It preserves the existing connection
-// lifetime and delivery classification; the timing is observational only.
-func SendRawMessageWithTiming(ctx context.Context, cfg *models.AccountConfig, password, from string, recipients []string, mimeData []byte) (models.SendResult, error, DeliveryTiming) {
+// SendRawMessageWithDelivery sends one message with a fresh SMTP connection,
+// optionally requesting DSN, and returns what the accepting server granted.
+func SendRawMessageWithDelivery(ctx context.Context, cfg *models.AccountConfig, password, from string, recipients []string, mimeData []byte, request *DSNRequest) (DeliveryOutcome, error, DeliveryTiming) {
 	startedAt := time.Now()
 	c, err := NewClient(ctx, cfg, password)
 	timing := DeliveryTiming{ConnectAuth: time.Since(startedAt)}
+	outcome := DeliveryOutcome{Result: models.SendFailed, DSNRequested: request != nil}
 	if err != nil {
 		timing.Total = time.Since(startedAt)
-		return models.SendFailed, err, timing
+		return outcome, err, timing
 	}
 	defer c.Close()
 
 	timing.ConnectionEstablished = true
 	timing.MessagesPerConnection = 1
-	result, err, sendTiming := c.sendRawWithTiming(ctx, from, recipients, mimeData)
-	timing.Data = sendTiming.Data
+	outcome, err = c.DeliverRaw(ctx, from, recipients, mimeData, request)
+	timing.Data = time.Since(startedAt)
 	timing.Total = time.Since(startedAt)
-	return result, err, timing
+	return outcome, err, timing
+}
+
+// SendRawMessageWithTiming sends one message with a fresh SMTP connection and
+// returns timing data for profiling. It preserves the existing connection
+// lifetime and delivery classification; the timing is observational only.
+func SendRawMessageWithTiming(ctx context.Context, cfg *models.AccountConfig, password, from string, recipients []string, mimeData []byte) (models.SendResult, error, DeliveryTiming) {
+	outcome, err, timing := SendRawMessageWithDelivery(ctx, cfg, password, from, recipients, mimeData, nil)
+	return outcome.Result, err, timing
 }

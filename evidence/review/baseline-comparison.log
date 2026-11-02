@@ -1,0 +1,42 @@
+=== RUN   TestUserJMAPQueuedDraftEditKeepsBcc
+2026/11/02 12:30:53 schema initialized at version 133
+2026/11/02 12:30:53 storage: schema migration check complete
+2026/11/02 12:30:53 storage: threading backfill deferred to background startup worker
+2026/11/02 12:30:53 schema initialized at version 133
+2026/11/02 12:30:53 storage: schema migration check complete
+2026/11/02 12:30:53 storage: threading backfill deferred to background startup worker
+2026/11/02 12:30:53 schema at version 133, no migration needed
+2026/11/02 12:30:53 storage: schema migration check complete
+2026/11/02 12:30:53 storage: threading backfill deferred to background startup worker
+2026/11/02 12:30:53 schema initialized at version 133
+2026/11/02 12:30:53 storage: schema migration check complete
+2026/11/02 12:30:53 storage: threading backfill deferred to background startup worker
+2026/11/02 12:30:53 schema at version 133, no migration needed
+2026/11/02 12:30:53 storage: schema migration check complete
+2026/11/02 12:30:53 storage: threading backfill deferred to background startup worker
+    user_jmap_send_test.go:46: SQL logic error: invalid uri authority: C: (1)
+--- FAIL: TestUserJMAPQueuedDraftEditKeepsBcc (0.29s)
+FAIL
+FAIL	github.com/cristianadrielbraun/gofer/internal/handler	0.634s
+=== RUN   TestUserStorageMigrationStageFinalVerifierCannotRepairPersistentDatabases
+2026/11/02 12:30:53 schema initialized at version 133
+2026/11/02 12:30:53 storage: schema migration check complete
+2026/11/02 12:30:53 storage: threading backfill deferred to background startup worker
+    user_storage_migration_stage_test.go:684: SQL logic error: invalid uri authority: C: (1)
+--- FAIL: TestUserStorageMigrationStageFinalVerifierCannotRepairPersistentDatabases (0.10s)
+FAIL
+FAIL	github.com/cristianadrielbraun/gofer/internal/storage	0.337s
+=== RUN   TestCompressMessageFilesConvertsOlderFiles
+    compress_existing_test.go:90: acc/messages/1/v1/raw.eml permissions changed: -rw-rw-rw- <nil>
+--- FAIL: TestCompressMessageFilesConvertsOlderFiles (0.04s)
+=== RUN   TestUserFileCleanupKeepsFreshDescendantsAndSymlinks
+    user_file_cleanup_test.go:102: symlink C:\Users\czxy4\AppData\Local\Temp\TestUserFileCleanupKeepsFreshDescendantsAndSymlinks3201656938\002 C:\Users\czxy4\AppData\Local\Temp\TestUserFileCleanupKeepsFreshDescendantsAndSymlinks3201656938\001\symlink-account: A required privilege is not held by the client.
+--- FAIL: TestUserFileCleanupKeepsFreshDescendantsAndSymlinks (0.01s)
+FAIL
+FAIL	github.com/cristianadrielbraun/gofer/internal/store	0.344s
+=== RUN   TestSendRawTimingReportsOneConnectionAndTransaction
+    client_test.go:520: timing durations = smtp.DeliveryTiming{ConnectAuth:0, Data:0, Total:0, QueueWait:0, ConnectionEstablished:true, MessagesPerConnection:1}, want positive transaction and total duration
+--- FAIL: TestSendRawTimingReportsOneConnectionAndTransaction (0.00s)
+FAIL
+FAIL	github.com/cristianadrielbraun/gofer/internal/mail/smtp	0.446s
+FAIL

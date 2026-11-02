@@ -1,0 +1,6 @@
+{
+  "Replace": {
+    "F:\\swe\\098872\\project-05\\internal\\handler\\zz_delivery_review_test.go": "F:/swe/098872/project-05/evidence/review/p05-handler.go.txt",
+    "F:/swe/098872/project-05/internal/handler/outgoing_identity_smtp_test.go": "F:/swe/098872/project-05/evidence/review/p05-smtp-fixture.go.txt"
+  }
+}

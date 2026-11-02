@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/cristianadrielbraun/gofer/internal/config"
@@ -166,12 +168,25 @@ func (s *userMailDeliveryScope) send(ctx context.Context) (bool, error) {
 	if err == nil && (send.Transport != storage.OutgoingTransportSMTP || snapshot.MessageID == "" || snapshot.CalendarReply != "" || snapshot.CalendarNotification != nil) {
 		err = errors.New("unsupported routed outgoing message")
 	}
+	var outcome smtpclient.DeliveryOutcome
 	if err == nil {
 		work, cancel := context.WithTimeout(ctx, 2*time.Minute)
-		result, err, _ = smtpclient.SendRawMessageWithTiming(work, s.cfg, s.smtpPassword, send.EnvelopeFrom, send.EnvelopeRecipients, send.MIMEData)
+		outcome, err, _ = smtpclient.SendRawMessageWithDelivery(work, s.cfg, s.smtpPassword, send.EnvelopeFrom, send.EnvelopeRecipients, send.MIMEData, routedDSNRequest(send))
+		result = outcome.Result
 		cancel()
+	} else {
+		outcome = smtpclient.DeliveryOutcome{Result: result, DSNRequested: send.DSNRequested}
 	}
-	return s.finishSMTP(ctx, send, snapshot.MessageID, result, err, true)
+	return s.finishSMTP(ctx, send, snapshot.MessageID, result, err, true, outcome)
+}
+
+// routedDSNRequest binds the queued send's stable ENVID to a retried SMTP
+// transaction; non-DSN sends stay ordinary.
+func routedDSNRequest(send storage.OutgoingSend) *smtpclient.DSNRequest {
+	if !send.DSNRequested || strings.TrimSpace(send.DSNEnvelopeID) == "" {
+		return nil
+	}
+	return &smtpclient.DSNRequest{EnvelopeID: send.DSNEnvelopeID}
 }
 
 // sendIdentitySMTP sends a message through the own SMTP server of the
@@ -192,22 +207,39 @@ func (s *userMailDeliveryScope) sendIdentitySMTP(ctx context.Context, send stora
 		return false, err
 	}
 	result, err := models.SendFailed, routeErr
+	var outcome smtpclient.DeliveryOutcome
 	if err == nil && snapshot.MessageID == "" {
 		err = errors.New("unsupported routed outgoing message")
 	}
 	if err == nil {
 		work, cancel := context.WithTimeout(ctx, 2*time.Minute)
-		result, err, _ = smtpclient.SendRawMessageWithTiming(work, cfg, password, send.EnvelopeFrom, send.EnvelopeRecipients, send.MIMEData)
+		outcome, err, _ = smtpclient.SendRawMessageWithDelivery(work, cfg, password, send.EnvelopeFrom, send.EnvelopeRecipients, send.MIMEData, routedDSNRequest(send))
+		result = outcome.Result
 		cancel()
+	} else {
+		outcome = smtpclient.DeliveryOutcome{Result: result, DSNRequested: send.DSNRequested}
 	}
-	return s.finishSMTP(ctx, send, snapshot.MessageID, result, err, true)
+	return s.finishSMTP(ctx, send, snapshot.MessageID, result, err, true, outcome)
 }
 
 // finishSMTP records how an SMTP delivery went and tells the browser.
-func (s *userMailDeliveryScope) finishSMTP(ctx context.Context, send storage.OutgoingSend, messageID string, result models.SendResult, err error, sentCopy bool) (bool, error) {
+func (s *userMailDeliveryScope) finishSMTP(ctx context.Context, send storage.OutgoingSend, messageID string, result models.SendResult, err error, sentCopy bool, dsnOutcome smtpclient.DeliveryOutcome) (bool, error) {
 	if ctx.Err() != nil {
 		return false, ctx.Err()
 	} // Leave the claim for recovery, never silently resend.
+	// Record what the accepting server granted for a DSN request when it
+	// accepted the message or when acceptance itself became ambiguous.
+	if send.DSNRequested && (result == models.SendSuccess || result == models.SendAmbiguous) {
+		dsnState := storage.DSNStateUnsupported
+		if dsnOutcome.DSNAvailable {
+			dsnState = storage.DSNStateRequested
+		}
+		if recordErr := s.call(ctx, func(db *storage.DB) error {
+			return db.RecordDSNAcceptance(ctx, send.ID, dsnState, send.EnvelopeRecipients)
+		}); recordErr != nil {
+			log.Printf("outgoing-dsn: record acceptance %s: %v", send.ID, recordErr)
+		}
+	}
 	status := storage.OutgoingSendSent
 	errText := ""
 	retryDelay := outgoingSendRetryDelayWithJitter(send.AttemptCount, s.runner.h.outgoingRandomValue())

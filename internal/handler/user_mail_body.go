@@ -43,6 +43,9 @@ load:
 			return sql.ErrNoRows
 		}
 		accountID = info.AccountID
+		// A cached multipart/report is correlated with its send on read; the
+		// commit is best effort and never changes the body response.
+		h.processOpenedDeliveryReport(ctx, db, owner, number, info.AccountID, info.RawPath)
 		// Resolve the copied account before using its message paths, and keep its
 		// scope pinned until the local reads finish. No provider network call occurs.
 		return h.userStorage.WithAccountForUser(ctx, owner, info.AccountID, func(*storage.DB) error {

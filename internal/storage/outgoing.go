@@ -66,6 +66,9 @@ type OutgoingSend struct {
 	SentCopyNextTry     time.Time
 	SentCopyUID         uint32
 	SentCopyUIDValidity uint32
+	DSNRequested        bool
+	DSNEnvelopeID       string
+	DSNState            string
 	CreatedAt           time.Time
 }
 
@@ -89,6 +92,8 @@ type OutgoingSendSummary struct {
 	SentCopyNextTry     time.Time
 	SentCopyUID         uint32
 	SentCopyUIDValidity uint32
+	DSNRequested        bool
+	DSNState            string
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }
@@ -105,6 +110,10 @@ type QueueOutgoingSendInput struct {
 	MessageJSON        []byte
 	SendAfter          time.Time
 	IsScheduled        bool
+	// RequestDSN asks the SMTP delivery to bind DSNEnvelopeID to the message and
+	// request per-recipient delivery reports. It is honored for SMTP sends.
+	RequestDSN    bool
+	DSNEnvelopeID string
 }
 
 func (db *DB) QueueOutgoingSend(ctx context.Context, input QueueOutgoingSendInput) (OutgoingSend, error) {
@@ -127,12 +136,17 @@ func (db *DB) QueueOutgoingSend(ctx context.Context, input QueueOutgoingSendInpu
 	if input.MessageID > 0 {
 		messageID = input.MessageID
 	}
+	dsnRequested := 0
+	if input.RequestDSN {
+		dsnRequested = 1
+	}
 	result, err := db.Write().ExecContext(ctx, `
 		INSERT INTO outgoing_sends (
 			id, account_id, message_id, draft_id, transport, envelope_from,
 			envelope_recipients, mime_data, message_json, send_after, next_attempt_at, is_scheduled,
-			status, attempt_count, last_error, locked_at, sent_message_id
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '', NULL, '')
+			status, attempt_count, last_error, locked_at, sent_message_id,
+			dsn_requested, dsn_envid, dsn_state
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '', NULL, '', ?, ?, '')
 		ON CONFLICT(message_id) DO UPDATE SET
 			account_id = excluded.account_id,
 			draft_id = excluded.draft_id,
@@ -149,6 +163,8 @@ func (db *DB) QueueOutgoingSend(ctx context.Context, input QueueOutgoingSendInpu
 			last_error = '',
 			locked_at = NULL,
 			sent_message_id = '',
+			dsn_requested = excluded.dsn_requested,
+			dsn_envid = COALESCE(NULLIF(outgoing_sends.dsn_envid, ''), excluded.dsn_envid),
 			sent_copy_status = 'not_required',
 			sent_copy_attempt_count = 0,
 			sent_copy_last_error = '',
@@ -160,7 +176,7 @@ func (db *DB) QueueOutgoingSend(ctx context.Context, input QueueOutgoingSendInpu
 		WHERE outgoing_sends.status != ?`,
 		input.ID, input.AccountID, messageID, input.DraftID, input.Transport, input.EnvelopeFrom,
 		string(recipientsJSON), input.MIMEData, string(input.MessageJSON), input.SendAfter, time.Now().UTC(), input.IsScheduled,
-		OutgoingSendPending, OutgoingSendSending)
+		OutgoingSendPending, dsnRequested, input.DSNEnvelopeID, OutgoingSendSending)
 	if err != nil {
 		return OutgoingSend{}, fmt.Errorf("queue outgoing send: %w", err)
 	}
@@ -571,7 +587,7 @@ func (db *DB) ListUnpreparedOutgoingSends(ctx context.Context) ([]OutgoingSend, 
 	return sends, rows.Err()
 }
 
-func (db *DB) PrepareOutgoingSend(ctx context.Context, id, draftID, transport, envelopeFrom string, recipients []string, mimeData, messageJSON []byte) error {
+func (db *DB) PrepareOutgoingSend(ctx context.Context, id, draftID, transport, envelopeFrom string, recipients []string, mimeData, messageJSON []byte, requestDSN bool, dsnEnvelopeID string) error {
 	if id == "" || draftID == "" || transport == "" || envelopeFrom == "" || len(recipients) == 0 || len(mimeData) == 0 || len(messageJSON) == 0 {
 		return fmt.Errorf("missing outgoing send payload")
 	}
@@ -579,11 +595,17 @@ func (db *DB) PrepareOutgoingSend(ctx context.Context, id, draftID, transport, e
 	if err != nil {
 		return err
 	}
+	dsnRequested := 0
+	if requestDSN {
+		dsnRequested = 1
+	}
 	_, err = db.Write().ExecContext(ctx, `
 		UPDATE outgoing_sends
 		SET draft_id = ?, transport = ?, envelope_from = ?, envelope_recipients = ?,
-			mime_data = ?, message_json = ?, updated_at = CURRENT_TIMESTAMP
-		WHERE id = ? AND status = ?`, draftID, transport, envelopeFrom, string(recipientsJSON), mimeData, string(messageJSON), id, OutgoingSendPending)
+			mime_data = ?, message_json = ?, dsn_requested = ?,
+			dsn_envid = COALESCE(NULLIF(dsn_envid, ''), ?),
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = ? AND status = ?`, draftID, transport, envelopeFrom, string(recipientsJSON), mimeData, string(messageJSON), dsnRequested, dsnEnvelopeID, id, OutgoingSendPending)
 	return err
 }
 
@@ -622,13 +644,15 @@ const outgoingSendSelect = `SELECT id, account_id, message_id, draft_id, transpo
 	envelope_recipients, mime_data, message_json, send_after, next_attempt_at, is_scheduled,
 	status, attempt_count, last_error, sent_message_id,
 	sent_copy_status, sent_copy_attempt_count, sent_copy_last_error,
-	sent_copy_next_attempt_at, sent_copy_uid, sent_copy_uid_validity, created_at
+	sent_copy_next_attempt_at, sent_copy_uid, sent_copy_uid_validity, created_at,
+	dsn_requested, dsn_envid, dsn_state
 	FROM outgoing_sends`
 
 const outgoingSendSummarySelect = `SELECT os.id, os.account_id, COALESCE(os.message_id, 0), os.draft_id, os.transport,
 	os.send_after, os.next_attempt_at, os.is_scheduled, os.status, os.attempt_count, os.last_error,
 	os.sent_copy_status, os.sent_copy_attempt_count, os.sent_copy_last_error, os.sent_copy_next_attempt_at,
-	os.sent_copy_uid, os.sent_copy_uid_validity, os.created_at, os.updated_at
+	os.sent_copy_uid, os.sent_copy_uid_validity, os.created_at, os.updated_at,
+	os.dsn_requested, os.dsn_state
 	FROM outgoing_sends os`
 
 type rowScanner interface {
@@ -645,15 +669,18 @@ func scanOutgoingSend(row rowScanner) (OutgoingSend, error) {
 	var createdAt sqliteNullTime
 	var scheduled int
 	var sentCopyUID, sentCopyUIDValidity int64
+	var dsnRequested int
 	if err := row.Scan(
 		&send.ID, &send.AccountID, &messageID, &send.DraftID, &send.Transport, &send.EnvelopeFrom,
 		&recipientsJSON, &send.MIMEData, &send.MessageJSON, &sendAfter, &nextAttemptAt, &scheduled,
 		&send.Status, &send.AttemptCount, &send.LastError, &send.SentMessageID,
 		&send.SentCopyStatus, &send.SentCopyAttempts, &send.SentCopyLastError,
 		&sentCopyNextTry, &sentCopyUID, &sentCopyUIDValidity, &createdAt,
+		&dsnRequested, &send.DSNEnvelopeID, &send.DSNState,
 	); err != nil {
 		return OutgoingSend{}, err
 	}
+	send.DSNRequested = dsnRequested != 0
 	if messageID.Valid {
 		send.MessageID = messageID.Int64
 	}
@@ -689,14 +716,17 @@ func scanOutgoingSendSummary(row rowScanner) (OutgoingSendSummary, error) {
 	var sendAfter, nextAttempt, sentCopyNext, createdAt, updatedAt sqliteNullTime
 	var scheduled int
 	var sentCopyUID, sentCopyUIDValidity int64
+	var dsnRequested int
 	if err := row.Scan(
 		&summary.ID, &summary.AccountID, &summary.MessageID, &summary.DraftID, &summary.Transport,
 		&sendAfter, &nextAttempt, &scheduled, &summary.Status, &summary.AttemptCount, &summary.LastError,
 		&summary.SentCopyStatus, &summary.SentCopyAttempts, &summary.SentCopyLastError, &sentCopyNext,
 		&sentCopyUID, &sentCopyUIDValidity, &createdAt, &updatedAt,
+		&dsnRequested, &summary.DSNState,
 	); err != nil {
 		return OutgoingSendSummary{}, err
 	}
+	summary.DSNRequested = dsnRequested != 0
 	if sendAfter.Valid {
 		summary.SendAfter = sendAfter.Time
 	}

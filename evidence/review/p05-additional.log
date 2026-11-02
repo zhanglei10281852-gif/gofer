@@ -1,0 +1,134 @@
+=== RUN   TestParseReportDeliveredFailureAndDelay
+--- PASS: TestParseReportDeliveredFailureAndDelay (0.03s)
+=== RUN   TestParseReportXtextEnvelopeID
+--- PASS: TestParseReportXtextEnvelopeID (0.00s)
+=== RUN   TestParseReportRejectsOtherMessages
+=== RUN   TestParseReportRejectsOtherMessages/ordinary_mail
+=== RUN   TestParseReportRejectsOtherMessages/MDN_report
+=== RUN   TestParseReportRejectsOtherMessages/missing_status
+--- PASS: TestParseReportRejectsOtherMessages (0.00s)
+    --- PASS: TestParseReportRejectsOtherMessages/ordinary_mail (0.00s)
+    --- PASS: TestParseReportRejectsOtherMessages/MDN_report (0.00s)
+    --- PASS: TestParseReportRejectsOtherMessages/missing_status (0.00s)
+=== RUN   TestParseReportOneBadBlockKeepsOthers
+--- PASS: TestParseReportOneBadBlockKeepsOthers (0.00s)
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/mail/dsn	0.786s
+testing: warning: no tests to run
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/mail/message	1.346s [no tests to run]
+=== RUN   TestSendKeepsBccAsEnvelopeOnly
+--- PASS: TestSendKeepsBccAsEnvelopeOnly (0.00s)
+=== RUN   TestDeliverRawRequestsDSNWhenAdvertised
+--- PASS: TestDeliverRawRequestsDSNWhenAdvertised (0.00s)
+=== RUN   TestDeliverRawFallsBackWhenDSNNotAdvertised
+--- PASS: TestDeliverRawFallsBackWhenDSNNotAdvertised (0.00s)
+=== RUN   TestDeliverRawWithoutRequestSendsPlain
+--- PASS: TestDeliverRawWithoutRequestSendsPlain (0.00s)
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/mail/smtp	1.421s
+=== RUN   TestDSNAcceptanceSnapshotsEnvelopeIncludingBcc
+2026/11/02 12:32:38 schema initialized at version 134
+2026/11/02 12:32:38 storage: schema migration check complete
+2026/11/02 12:32:38 storage: threading backfill deferred to background startup worker
+--- PASS: TestDSNAcceptanceSnapshotsEnvelopeIncludingBcc (0.14s)
+=== RUN   TestDSNUnsupportedServerSendsPlainState
+2026/11/02 12:32:38 schema initialized at version 134
+2026/11/02 12:32:38 storage: schema migration check complete
+2026/11/02 12:32:38 storage: threading backfill deferred to background startup worker
+--- PASS: TestDSNUnsupportedServerSendsPlainState (0.17s)
+=== RUN   TestDSNReportCorrelationIsIdempotentAndMonotonic
+2026/11/02 12:32:38 schema initialized at version 134
+2026/11/02 12:32:38 storage: schema migration check complete
+2026/11/02 12:32:38 storage: threading backfill deferred to background startup worker
+--- PASS: TestDSNReportCorrelationIsIdempotentAndMonotonic (0.10s)
+=== RUN   TestDSNUnknownEnvelopeStaysOrdinaryMessage
+2026/11/02 12:32:38 schema initialized at version 134
+2026/11/02 12:32:38 storage: schema migration check complete
+2026/11/02 12:32:38 storage: threading backfill deferred to background startup worker
+--- PASS: TestDSNUnknownEnvelopeStaysOrdinaryMessage (0.09s)
+=== RUN   TestDSNEnvelopeIDStableAcrossRequeue
+2026/11/02 12:32:38 schema initialized at version 134
+2026/11/02 12:32:38 storage: schema migration check complete
+2026/11/02 12:32:38 storage: threading backfill deferred to background startup worker
+--- PASS: TestDSNEnvelopeIDStableAcrossRequeue (0.09s)
+=== RUN   TestDSNCascadesWithSendRetention
+2026/11/02 12:32:38 schema initialized at version 134
+2026/11/02 12:32:38 storage: schema migration check complete
+2026/11/02 12:32:38 storage: threading backfill deferred to background startup worker
+--- PASS: TestDSNCascadesWithSendRetention (0.09s)
+=== RUN   TestDeliveryStatusForMessageAnchorsSentAndReport
+2026/11/02 12:32:39 schema initialized at version 134
+2026/11/02 12:32:39 storage: schema migration check complete
+2026/11/02 12:32:39 storage: threading backfill deferred to background startup worker
+--- PASS: TestDeliveryStatusForMessageAnchorsSentAndReport (0.11s)
+=== RUN   TestDraftDSNOptionRoundTrip
+2026/11/02 12:32:39 schema initialized at version 134
+2026/11/02 12:32:39 storage: schema migration check complete
+2026/11/02 12:32:39 storage: threading backfill deferred to background startup worker
+--- PASS: TestDraftDSNOptionRoundTrip (0.09s)
+=== RUN   TestOutgoingSendLifecycleKeepsImmutablePayload
+2026/11/02 12:32:39 schema initialized at version 134
+2026/11/02 12:32:39 storage: schema migration check complete
+2026/11/02 12:32:39 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendLifecycleKeepsImmutablePayload (0.08s)
+=== RUN   TestOutgoingSendRetryWaitsForBackoffAndKeepsPayload
+2026/11/02 12:32:39 schema initialized at version 134
+2026/11/02 12:32:39 storage: schema migration check complete
+2026/11/02 12:32:39 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendRetryWaitsForBackoffAndKeepsPayload (0.09s)
+=== RUN   TestOutgoingSendRetrySurvivesDatabaseRestart
+2026/11/02 12:32:39 schema initialized at version 134
+2026/11/02 12:32:39 storage: schema migration check complete
+2026/11/02 12:32:39 storage: threading backfill deferred to background startup worker
+2026/11/02 12:32:39 storage: schema migration check complete
+2026/11/02 12:32:39 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendRetrySurvivesDatabaseRestart (0.11s)
+=== RUN   TestOutgoingSendUserSummaryAndRecoveryActions
+2026/11/02 12:32:39 schema initialized at version 134
+2026/11/02 12:32:39 storage: schema migration check complete
+2026/11/02 12:32:39 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendUserSummaryAndRecoveryActions (0.07s)
+=== RUN   TestOutgoingSendAmbiguousRetryRequiresConfirmation
+2026/11/02 12:32:39 schema initialized at version 134
+2026/11/02 12:32:39 storage: schema migration check complete
+2026/11/02 12:32:39 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendAmbiguousRetryRequiresConfirmation (0.07s)
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/storage	1.610s
+=== RUN   TestProcessOpenedDeliveryReportEndToEnd
+2026/11/02 12:32:39 schema initialized at version 134
+2026/11/02 12:32:39 storage: schema migration check complete
+2026/11/02 12:32:39 storage: threading backfill deferred to background startup worker
+--- PASS: TestProcessOpenedDeliveryReportEndToEnd (0.13s)
+=== RUN   TestProcessOpenedDeliveryReportUnknownEnvelopeStaysOrdinary
+2026/11/02 12:32:39 schema initialized at version 134
+2026/11/02 12:32:39 storage: schema migration check complete
+2026/11/02 12:32:39 storage: threading backfill deferred to background startup worker
+--- PASS: TestProcessOpenedDeliveryReportUnknownEnvelopeStaysOrdinary (0.07s)
+=== RUN   TestFormRequestsDSN
+--- PASS: TestFormRequestsDSN (0.00s)
+=== RUN   TestQueueOutgoingMessageBindsDSNOnlyForSMTP
+2026/11/02 12:32:39 schema initialized at version 134
+2026/11/02 12:32:39 storage: schema migration check complete
+2026/11/02 12:32:39 storage: threading backfill deferred to background startup worker
+--- PASS: TestQueueOutgoingMessageBindsDSNOnlyForSMTP (0.07s)
+=== RUN   TestOutgoingSendStatusIsScopedToCurrentUser
+2026/11/02 12:32:39 schema initialized at version 134
+2026/11/02 12:32:39 storage: schema migration check complete
+2026/11/02 12:32:39 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendStatusIsScopedToCurrentUser (0.08s)
+=== RUN   TestOutgoingSendStatusActionsHandleAmbiguousRetryAndCancel
+2026/11/02 12:32:39 schema initialized at version 134
+2026/11/02 12:32:39 storage: schema migration check complete
+2026/11/02 12:32:39 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendStatusActionsHandleAmbiguousRetryAndCancel (0.07s)
+=== RUN   TestOutgoingSendStatusRoutesAreRegistered
+2026/11/02 12:32:39 schema initialized at version 134
+2026/11/02 12:32:39 storage: schema migration check complete
+2026/11/02 12:32:39 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendStatusRoutesAreRegistered (0.06s)
+=== RUN   TestOutgoingSendContextIsBoundedAndKeepsParentCancellation
+--- PASS: TestOutgoingSendContextIsBoundedAndKeepsParentCancellation (0.00s)
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/handler	0.872s

@@ -1,0 +1,19 @@
+=== RUN   TestInterruptedOutgoingSendBecomesAmbiguousAndIsNotRetried
+2026/11/02 12:36:05 schema initialized at version 134
+2026/11/02 12:36:05 storage: schema migration check complete
+2026/11/02 12:36:05 storage: threading backfill deferred to background startup worker
+--- PASS: TestInterruptedOutgoingSendBecomesAmbiguousAndIsNotRetried (0.10s)
+=== RUN   TestPendingOutgoingSendSurvivesDatabaseRestart
+2026/11/02 12:36:05 schema initialized at version 134
+2026/11/02 12:36:05 storage: schema migration check complete
+2026/11/02 12:36:05 storage: threading backfill deferred to background startup worker
+2026/11/02 12:36:05 storage: schema migration check complete
+2026/11/02 12:36:05 storage: threading backfill deferred to background startup worker
+--- PASS: TestPendingOutgoingSendSurvivesDatabaseRestart (0.14s)
+=== RUN   TestOutgoingSendAmbiguousRetryRequiresConfirmation
+2026/11/02 12:36:05 schema initialized at version 134
+2026/11/02 12:36:05 storage: schema migration check complete
+2026/11/02 12:36:05 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendAmbiguousRetryRequiresConfirmation (0.09s)
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/storage	0.651s

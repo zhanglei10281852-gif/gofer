@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,14 @@ import (
 // outgoingSendSummaryResponse is intentionally a small, user-scoped view of
 // an outbox row. In particular, it never includes the stored MIME payload or
 // the SMTP envelope.
+type outgoingDSNRecipientResponse struct {
+	Address    string `json:"address"`
+	State      string `json:"state"`
+	StatusCode string `json:"status_code,omitempty"`
+	Diagnostic string `json:"diagnostic,omitempty"`
+	ReportedAt string `json:"reported_at,omitempty"`
+}
+
 type outgoingSendSummaryResponse struct {
 	ID                    string `json:"id"`
 	AccountID             string `json:"account_id"`
@@ -32,6 +41,14 @@ type outgoingSendSummaryResponse struct {
 	SentCopyNextAttemptAt string `json:"sent_copy_next_attempt_at,omitempty"`
 	CreatedAt             string `json:"created_at,omitempty"`
 	UpdatedAt             string `json:"updated_at,omitempty"`
+
+	// DSN separates server acceptance from delivery: dsn_state is "requested"
+	// when the SMTP server accepted the ENVID/NOTIFY parameters, "unsupported"
+	// when it could not, and recipients carry later reports without ever
+	// treating the absence of a report as delivered or failed.
+	DSNRequested bool                            `json:"dsn_requested"`
+	DSNState     string                          `json:"dsn_state,omitempty"`
+	DSNRecipients []outgoingDSNRecipientResponse `json:"dsn_recipients,omitempty"`
 
 	CanRetry                 bool `json:"can_retry"`
 	CanRetryNow              bool `json:"can_retry_now"`
@@ -74,6 +91,9 @@ func outgoingSendSummaryResponseFrom(summary storage.OutgoingSendSummary) outgoi
 		CreatedAt:             outgoingSendTime(summary.CreatedAt),
 		UpdatedAt:             outgoingSendTime(summary.UpdatedAt),
 
+		DSNRequested: summary.DSNRequested,
+		DSNState:     summary.DSNState,
+
 		CanRetry:                 summary.Status == storage.OutgoingSendFailed || summary.Status == storage.OutgoingSendAmbiguous,
 		CanRetryNow:              summary.Status == storage.OutgoingSendPending,
 		CanCancel:                summary.Status == storage.OutgoingSendPending || summary.Status == storage.OutgoingSendFailed || summary.Status == storage.OutgoingSendAmbiguous,
@@ -103,9 +123,37 @@ func (h *Handler) handleOutgoingSendList(w http.ResponseWriter, r *http.Request)
 	}
 	response := outgoingSendListResponse{Sends: make([]outgoingSendSummaryResponse, 0, len(summaries))}
 	for _, summary := range summaries {
-		response.Sends = append(response.Sends, outgoingSendSummaryResponseFrom(summary))
+		item := outgoingSendSummaryResponseFrom(summary)
+		if summary.DSNState != "" {
+			item.DSNRecipients = h.dsnRecipientResponses(r.Context(), summary.ID)
+		}
+		response.Sends = append(response.Sends, item)
 	}
 	writeOutgoingSendJSON(w, http.StatusOK, response)
+}
+
+// dsnRecipientResponses loads the latest per-recipient delivery reports. The
+// list is the sender's own envelope, so it can include Bcc addresses that no
+// message header ever names.
+func (h *Handler) dsnRecipientResponses(ctx context.Context, sendID string) []outgoingDSNRecipientResponse {
+	recipients, err := h.db.DSNRecipientsForSend(ctx, sendID)
+	if err != nil {
+		return nil
+	}
+	items := make([]outgoingDSNRecipientResponse, 0, len(recipients))
+	for _, recipient := range recipients {
+		item := outgoingDSNRecipientResponse{
+			Address:    recipient.Address,
+			State:      recipient.State,
+			StatusCode: recipient.StatusCode,
+			Diagnostic: recipient.Diagnostic,
+		}
+		if !recipient.ReportedAt.IsZero() {
+			item.ReportedAt = recipient.ReportedAt.UTC().Format("2006-01-02T15:04:05Z")
+		}
+		items = append(items, item)
+	}
+	return items
 }
 
 func (h *Handler) handleOutgoingSendGet(w http.ResponseWriter, r *http.Request) {
@@ -123,7 +171,11 @@ func (h *Handler) handleOutgoingSendGet(w http.ResponseWriter, r *http.Request) 
 		writeOutgoingSendError(w, http.StatusInternalServerError, "failed to load outgoing send status", false)
 		return
 	}
-	writeOutgoingSendJSON(w, http.StatusOK, outgoingSendSummaryResponseFrom(summary))
+	item := outgoingSendSummaryResponseFrom(summary)
+	if summary.DSNState != "" {
+		item.DSNRecipients = h.dsnRecipientResponses(r.Context(), summary.ID)
+	}
+	writeOutgoingSendJSON(w, http.StatusOK, item)
 }
 
 func (h *Handler) parseOutgoingSendConfirmation(r *http.Request) (bool, error) {
@@ -235,5 +287,9 @@ func (h *Handler) writeOutgoingSendResponse(w http.ResponseWriter, r *http.Reque
 		writeOutgoingSendError(w, http.StatusInternalServerError, "failed to load outgoing send status", false)
 		return
 	}
-	writeOutgoingSendJSON(w, http.StatusOK, outgoingSendSummaryResponseFrom(summary))
+	item := outgoingSendSummaryResponseFrom(summary)
+	if summary.DSNState != "" {
+		item.DSNRecipients = h.dsnRecipientResponses(r.Context(), summary.ID)
+	}
+	writeOutgoingSendJSON(w, http.StatusOK, item)
 }

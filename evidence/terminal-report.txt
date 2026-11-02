@@ -1,0 +1,41 @@
+GOFER project-05 | 在发送记录中关联逐收件人的 SMTP 投递报告
+题目 ID：cristianadrielbraun-gofer-054af662-5381-4a58-9be2-17e43c0d093b
+完成度：部分完成 | 有效轮数：235 | 收录：长程题 | 超过两小时：是
+
+Rubric ID：1｜状态：通过｜期望行为：开启报告选项并保存草稿或预约后，支持 DSN 的 SMTP 会话携带绑定该发送的信封标识和逐收件人通知参数；普通重试仍关联同一请求。｜实际观察：草稿往返、预约快照及重排保持 ENVID；模拟 SMTP 收到 ENVID/NOTIFY｜直接
+证据：smtp/dsn_test.go；storage/outgoing_dsn_test.go；p05-additional.log
+
+Rubric ID：2｜状态：通过｜期望行为：SMTP 未声明支持 DSN 时邮件仍正常提交且发送详情说明报告不可用；服务器接受邮件与收件人投递状态分别显示，没有报告不会显示为投递成功或失败。｜实际观察：无 DSN 扩展仍成功；状态 unsupported；无报告收件人 wait
+ing｜直接证据：TestDeliverRawFallsBackWhenDSNNotAdvertised；app.js:9212–9223、20969–21018
+
+Rubric ID：3｜状态：未通过｜期望行为：通过真实读信入口读取一封包含不同收件人结果的标准报告，会分别更新对应收件人的延迟、投递或失败；无效段落、陌生标识和原信封之外的地址不改写其他记录，普通正文仍可阅读。｜实际观察：GET 正文返回200；Status=
+nonsense 的地址被改为 delivered；有效地址 delayed｜直接证据：TestReviewMalformedDSNBlockDoesNotAlterState 三次重复同结果｜原因：无效Status值的报告段落被接受并将收件人标为已投递｜影响：无法解释的段落改写了持久投递结果，普通正文仍返回200｜
+证据位置：internal/handler/outgoing_dsn.go:82–88、101–110；review/p05-review-final.log
+
+Rubric ID：4｜状态：未通过｜期望行为：完成发送并清理 MIME 快照后，在发送记录保留期内收到报告仍可关联原收件人，包括密送；密送地址不会写入发给其他人的邮件头部或正文。｜实际观察：SMTP接受后注入信封写入失败；仍 sent/copy=complete，MIME=0、关
+联=0｜直接证据：真实发送 worker：SMTP submissions=1，后续报告 HTTP=200、recipients=0｜原因：接受记录写入失败被吞掉且继续清空快照导致后续报告失去关联｜影响：有效 ENVID 报告找不到原信封，发送保留期内的逐收件人结果无法恢复｜证据位置：interna
+l/handler/outgoing.go:447–460、785–800；review/p05-review-final.log
+
+Rubric ID：5｜状态：通过｜期望行为：重复读取、重复接收及重启后处理同一报告不会重复累计；已经确认成功或失败的收件人不会被晚到的延迟通知退回等待，其他收件人保持各自状态。｜实际观察：重开数据库并读重复报告仍 delivered；晚到 delayed 不回退｜
+直接证据：TestReviewRawMissingRetryAndRestartIdempotence；storage/outgoing_dsn.go:321–347、434–485
+
+Rubric ID：6｜状态：通过｜期望行为：正文下载失败不改变投递结果，后续成功读取可继续处理；报告状态提交失败后，再次打开已有缓存会补处理未确认结果，期间不重发原邮件。｜实际观察：原文缺失保持 waiting且marker=0；标记插入故障回滚，缓存重开后 del
+ivered，发件数1｜直接证据：TestReviewDSNTransactionRollbackAndCachedRetry 三次通过；user_mail_body.go:38–119
+
+Rubric ID：7｜状态：通过｜期望行为：发送详情能同时展示不同收件人的不同结果，报告本身仍可阅读下载；发送记录超过现有保留期被清理时，其报告关联不会遗留或串到后来发送。｜实际观察：详情查询区分收件人；原文路径保留；删除发送记录级联清理关联｜直
+接证据：TestDeliveryStatusForMessageAnchorsSentAndReport / TestDSNCascadesWithSendRetention；app.js:20969–21024
+
+Rubric ID：8｜状态：通过｜期望行为：未请求报告及非 SMTP 的普通发送保持原行为，现有不确定投递提示、人工重试确认和 Sent 副本恢复继续有效，不因报告处理额外提交邮件。｜实际观察：默认/非 SMTP 不请求 DSN；ambiguous 要确认；Sent 丢答恢复不重复 S
+MTP｜直接证据：TestQueueOutgoingMessageBindsDSNOnlyForSMTP；p05-targeted.log / p05-recovery.log
+
+原始验证输出（本题模型产物；复盘验证不是模型重跑）
+go test -count=3 -v -timeout 90s -overlay evidence/review/overlay.json ./internal/handler -run '^TestReview'
+zz_delivery_review_test.go:13: real GET body HTTP=200 malformed=delivered valid=delayed
+zz_delivery_review_test.go:19: body HTTP=200; failed transaction leaves 0 markers; cached reopen delivered; original outgoing count=1
+zz_delivery_review_test.go:30: SMTP submissions=1 send=sent copy=complete MIME_bytes=0 envelope_rows=0 recipients=0 report_HTTP=200
+zz_delivery_review_test.go:41: raw missing -> waiting and marker=0; restored -> delivered; DB reopened + duplicate report -> delivered; outgoing=1
+生产路径 outgoing_dsn.go:101–110: dsnRecordValid(address, action) 只校验 @ 和 Action
+生产路径 outgoing.go:798–800: RecordDSNAcceptance 出错只 log.Printf，447–460 继续完成发送
+故障注入：BEFORE INSERT ON outgoing_dsn_envelopes => RAISE(ABORT)
+故障后 SMTP submissions=1 / sent / copy=complete / MIME_bytes=0 / envelope_rows=0
+同一 ENVID 的有效报告经真实 GET 返回 200，recipients=0；缺少持久关联无法恢复
