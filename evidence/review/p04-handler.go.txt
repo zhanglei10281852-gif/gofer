@@ -1,0 +1,34 @@
+package handler
+import ("fmt";"encoding/json";"net/http/httptest";"net/url";"os";"strings";"testing";"time";"github.com/cristianadrielbraun/gofer/internal/storage";"github.com/google/uuid")
+func TestReviewFrozenAttachmentRetainedOnEdit(t *testing.T){
+ h,db:=newScheduleHandlerTest(t);cfg,err:=h.accountStore.GetConfig(t.Context(),"victim-account");if err!=nil{t.Fatal(err)};id:=uuid.NewString()
+ v,err:=h.blobStore.NewScheduleVersion("victim-account",id);if err!=nil{t.Fatal(err)};path,err:=v.StoreScheduleAttachment(t.Context(),"victim-account",id,1,"memo.txt",strings.NewReader("frozen attachment"));if err!=nil{t.Fatal(err)}
+ content,_:=json.Marshal(outgoingMessageSnapshot{FromEmail:"owner@example.com",To:[]outgoingAddressSnapshot{{Address:"recipient@example.com"}},TextBody:"old",Attachments:[]outgoingAttachmentSnapshot{{Filename:"memo.txt",Path:path,Size:17}}})
+ now:=time.Now().UTC();p,err:=db.CreateSendSchedule(t.Context(),storage.CreateSendScheduleInput{ID:id,AccountID:"victim-account",Recurrence:"daily",Timezone:"UTC",Hour:23,Minute:59,StartDate:now.AddDate(0,0,-1).Format("2006-01-02"),ContentJSON:content});if err!=nil{t.Fatal(err)}
+ got,err:=db.MaterializeDueScheduleInstances(t.Context(),"victim-account",now,h.scheduleSendBuilder(cfg));if err!=nil||got.Frozen!=1{t.Fatalf("freeze %+v %v",got,err)}
+ instances,_:=db.GetSendScheduleInstancesForUser(t.Context(),"owner",p.ID,10);send,_:=db.GetOutgoingSend(t.Context(),instances[0].OutgoingSendID)
+ req:=scheduleRequest(t,"owner","/api/send-schedules/"+p.ID+"/content",url.Values{"account_id":{"victim-account"},"to":{"recipient@example.com"},"subject":{"edited"},"body":{"new body"}});req.SetPathValue("id",p.ID);rec:=httptest.NewRecorder();h.handleSendScheduleContent(rec,req)
+ if rec.Code!=200{t.Fatalf("edit=%d %s",rec.Code,rec.Body.String())};_,statErr:=os.Stat(path);t.Logf("edit HTTP=%d frozen status=%s attachment exists=%t",rec.Code,send.Status,statErr==nil)
+ if statErr!=nil{t.Errorf("Rubric 4/6: pending snapshot references deleted attachment: %v",statErr)}
+}
+
+func TestReviewEndPreservesOldPendingReference(t *testing.T){
+ h,db:=newScheduleHandlerTest(t); cfg,e:=h.accountStore.GetConfig(t.Context(),"victim-account");if e!=nil{t.Fatal(e)}; id:=uuid.NewString();v,e:=h.blobStore.NewScheduleVersion("victim-account",id);if e!=nil{t.Fatal(e)}; path,e:=v.StoreScheduleAttachment(t.Context(),"victim-account",id,1,"memo.txt",strings.NewReader("pending content"));if e!=nil{t.Fatal(e)}
+ content,_:=json.Marshal(outgoingMessageSnapshot{FromEmail:"owner@example.com",To:[]outgoingAddressSnapshot{{Address:"recipient@example.com"}},TextBody:"saved",Attachments:[]outgoingAttachmentSnapshot{{Filename:"memo.txt",Path:path,Size:15}}})
+ start:=time.Date(2026,3,1,10,0,0,0,time.UTC);p,e:=db.CreateSendSchedule(t.Context(),storage.CreateSendScheduleInput{ID:id,AccountID:"victim-account",Recurrence:"daily",Timezone:"UTC",Hour:9,StartDate:"2026-03-01",ContentJSON:content});if e!=nil{t.Fatal(e)}
+ if _,e=db.MaterializeDueScheduleInstances(t.Context(),"victim-account",start,h.scheduleSendBuilder(cfg));e!=nil{t.Fatal(e)}
+ for i:=1;i<=200;i++{_,e=db.Write().Exec("INSERT INTO send_schedule_instances(id,schedule_id,local_date,scheduled_at,status,skip_reason) VALUES(?,?,?,CURRENT_TIMESTAMP,'skipped','paused')",fmt.Sprintf("skip-%d",i),p.ID,start.AddDate(0,0,i).Format("2006-01-02"));if e!=nil{t.Fatal(e)}}
+ if _,e=db.Write().Exec("UPDATE send_schedule_instances SET status='failed',last_error='temporary delivery failure' WHERE schedule_id=? AND status='pending'",p.ID);e!=nil{t.Fatal(e)};get:=scheduleRequest(t,"owner","/api/send-schedules/"+p.ID,url.Values{});get.SetPathValue("id",p.ID);gr:=httptest.NewRecorder();h.handleSendScheduleGet(gr,get);var detail map[string]any;if e=json.Unmarshal(gr.Body.Bytes(),&detail);e!=nil{t.Fatal(e)};ir:=httptest.NewRecorder();h.handleSendScheduleInstances(ir,get);var list map[string]any;if e=json.Unmarshal(ir.Body.Bytes(),&list);e!=nil{t.Fatal(e)};items,ok:=list["instances"].([]any);if !ok{t.Fatalf("instance response=%s",ir.Body.String())};visibleFailed:=0;for _,item:=range items{if item.(map[string]any)["status"]=="failed"{visibleFailed++}};t.Logf("detail HTTP=%d actual_history=201 returned=%d visible_failed=%d reported_unfinished=%v reported_total=%v",gr.Code,len(items),visibleFailed,detail["unfinished_count"],detail["total_instances"])
+
+ if _,e=db.Write().Exec("UPDATE send_schedule_instances SET status='pending' WHERE schedule_id=? AND status='failed'",p.ID);e!=nil{t.Fatal(e)};r:=scheduleRequest(t,"owner","/api/send-schedules/"+p.ID+"/end",url.Values{});r.SetPathValue("id",p.ID);r.SetPathValue("action","end");out:=httptest.NewRecorder();h.handleSendScheduleAction(out,r)
+ var pending int;db.Read().QueryRow("SELECT COUNT(*) FROM send_schedule_instances WHERE schedule_id=? AND status='pending'",p.ID).Scan(&pending);_,err:=os.Stat(path);t.Logf("end HTTP=%d total=201 pending=%d pending_attachment_exists=%t",out.Code,pending,err==nil)
+ if out.Code!=200||pending!=1{t.Fatal("invalid setup")};if err!=nil{t.Errorf("Rubric 4: end deleted attachment still referenced by oldest pending instance")}
+}
+func TestReviewInterleavedContentCleanupDeletesCurrentVersion(t *testing.T){
+ h,db:=newScheduleHandlerTest(t);cfg,e:=h.accountStore.GetConfig(t.Context(),"victim-account");if e!=nil{t.Fatal(e)};id:=uuid.NewString()
+ mk:=func(body string)(string,string,[]byte){v,e:=h.blobStore.NewScheduleVersion("victim-account",id);if e!=nil{t.Fatal(e)};p,e:=v.StoreScheduleAttachment(t.Context(),"victim-account",id,1,"memo.txt",strings.NewReader(body));if e!=nil{t.Fatal(e)};b,_:=json.Marshal(outgoingMessageSnapshot{FromEmail:"owner@example.com",To:[]outgoingAddressSnapshot{{Address:"recipient@example.com"}},TextBody:body,Attachments:[]outgoingAttachmentSnapshot{{Filename:"memo.txt",Path:p,Size:int64(len(body))}}});return v.VersionNonce(),p,b}
+ a,_,ca:=mk("edit A");p,e:=db.CreateSendSchedule(t.Context(),storage.CreateSendScheduleInput{ID:id,AccountID:"victim-account",Recurrence:"daily",Timezone:"UTC",Hour:9,StartDate:"2026-01-01",ContentJSON:ca});if e!=nil{t.Fatal(e)}
+ b,pb,cb:=mk("edit B");if _,e=db.UpdateSendScheduleContentForUser(t.Context(),"owner",p.ID,ca);e!=nil{t.Fatal(e)};if _,e=db.UpdateSendScheduleContentForUser(t.Context(),"owner",p.ID,cb);e!=nil{t.Fatal(e)}
+ if e=h.blobStore.DeleteScheduleVersionsExcept("victim-account",p.ID,b);e!=nil{t.Fatal(e)};if e=h.blobStore.DeleteScheduleVersionsExcept("victim-account",p.ID,a);e!=nil{t.Fatal(e)}
+ report,e:=db.MaterializeDueScheduleInstances(t.Context(),"victim-account",time.Date(2026,1,1,10,0,0,0,time.UTC),h.scheduleSendBuilder(cfg));if e!=nil{t.Fatal(e)};_,e=os.Stat(pb);t.Logf("A commit -> B commit -> B cleanup -> A cleanup: current_file_exists=%t frozen=%d failed=%d",e==nil,report.Frozen,report.Failed);if report.Failed!=0{t.Errorf("Rubric 6: earlier cleanup deletes current B attachment and future instance fails")}
+}

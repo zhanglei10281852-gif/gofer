@@ -1,0 +1,55 @@
+{
+  "id": "cristianadrielbraun-gofer-46a7691f-fe32-4783-98a6-dea5a846706c",
+  "expectedSyncRevision": 5,
+  "harness": "Trae",
+  "rounds": 254,
+  "sessionId": "573311172224344:2ac3b76ecb565d57236f5fd5c59bef7f_6ae7e4bd953ff8a44d425552.6ae7e4be953ff8a44d425555.6ae7e4bd953ff8a44d425553:TraeCode CN.3.3.104.no_sid.no_ppe.T(2026/11/2 09:17:50)",
+  "effectiveRoundsEvidence": {
+    "source": "count-trae-cn-steps.py",
+    "effectiveRounds": 254,
+    "sessionId": "573311172224344:2ac3b76ecb565d57236f5fd5c59bef7f_6ae7e4bd953ff8a44d425552.6ae7e4be953ff8a44d425555.6ae7e4bd953ff8a44d425553:TraeCode CN.3.3.104.no_sid.no_ppe.T(2026/11/2 09:17:50)",
+    "workspace": "F:\\swe\\098872\\project-04",
+    "script": "F:\\swe\\count-trae-cn-steps.py",
+    "scope": "latest_turn",
+    "assistantMessages": 1,
+    "stepsMain": 253,
+    "subagentSteps": 1,
+    "toolBatches": 254,
+    "replies": 0,
+    "compactions": 0,
+    "toolCalls": 424,
+    "uniqueTools": 19,
+    "parallelBatches": 86,
+    "parallelItemsCollapsed": 171,
+    "toolBreakdown": {
+      "NotifyUser": 1,
+      "Shell": 79,
+      "Skill": 1,
+      "Write": 19,
+      "browser_click": 12,
+      "browser_navigate": 1,
+      "browser_select_option": 1,
+      "browser_snapshot": 15,
+      "browser_tabs": 1,
+      "browser_take_screenshot": 1,
+      "browser_type": 9,
+      "browser_wait_for": 5,
+      "edit_file_search_replace": 126,
+      "file_search": 1,
+      "no_need_execute": 1,
+      "search_by_regex": 63,
+      "todo_write": 15,
+      "view_files": 72,
+      "view_folder": 1
+    },
+    "agentBreakdown": {
+      "SOLO": 253,
+      "Browser Use Agent": 1
+    },
+    "countingBasis": "agentRunId + reasoningContent response boundaries; consecutive tools stay in one model response",
+    "warnings": [
+      "1 个代理运行的首个计划项没有 reasoningContent，已按该代理的首个模型响应计数",
+      "已排除 1 个用户停止后生成的合成 finish 记录"
+    ]
+  }
+}

@@ -1,0 +1,182 @@
+=== RUN   TestScheduledOneTimeFromKeepsItsWayOfSending
+2026/11/02 12:32:40 schema initialized at version 134
+2026/11/02 12:32:40 storage: schema migration check complete
+2026/11/02 12:32:40 storage: threading backfill deferred to background startup worker
+--- PASS: TestScheduledOneTimeFromKeepsItsWayOfSending (0.11s)
+=== RUN   TestOutgoingSendStatusIsScopedToCurrentUser
+2026/11/02 12:32:40 schema initialized at version 134
+2026/11/02 12:32:40 storage: schema migration check complete
+2026/11/02 12:32:40 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendStatusIsScopedToCurrentUser (0.06s)
+=== RUN   TestOutgoingSendStatusActionsHandleAmbiguousRetryAndCancel
+2026/11/02 12:32:40 schema initialized at version 134
+2026/11/02 12:32:40 storage: schema migration check complete
+2026/11/02 12:32:40 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendStatusActionsHandleAmbiguousRetryAndCancel (0.06s)
+=== RUN   TestOutgoingSendStatusRoutesAreRegistered
+2026/11/02 12:32:40 schema initialized at version 134
+2026/11/02 12:32:40 storage: schema migration check complete
+2026/11/02 12:32:40 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendStatusRoutesAreRegistered (0.07s)
+=== RUN   TestOutgoingSendContextIsBoundedAndKeepsParentCancellation
+--- PASS: TestOutgoingSendContextIsBoundedAndKeepsParentCancellation (0.00s)
+=== RUN   TestHandleComposeScheduleCreatesRecurringPlanAndDropsDraft
+2026/11/02 12:32:40 schema initialized at version 134
+2026/11/02 12:32:40 storage: schema migration check complete
+2026/11/02 12:32:40 storage: threading backfill deferred to background startup worker
+--- PASS: TestHandleComposeScheduleCreatesRecurringPlanAndDropsDraft (0.09s)
+=== RUN   TestHandleComposeScheduleRejectsInvalidRecurringRules
+2026/11/02 12:32:40 schema initialized at version 134
+2026/11/02 12:32:40 storage: schema migration check complete
+2026/11/02 12:32:40 storage: threading backfill deferred to background startup worker
+--- PASS: TestHandleComposeScheduleRejectsInvalidRecurringRules (0.08s)
+=== RUN   TestHandleComposeScheduleNoneRepeatStillQueuesSingle
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestHandleComposeScheduleNoneRepeatStillQueuesSingle (0.07s)
+=== RUN   TestSendScheduleAPIOwnership
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestSendScheduleAPIOwnership (0.07s)
+=== RUN   TestScheduleContentEditKeepsFrozenSnapshot
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestScheduleContentEditKeepsFrozenSnapshot (0.07s)
+=== RUN   TestSchedulePauseResumeEndLifecycle
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestSchedulePauseResumeEndLifecycle (0.07s)
+=== RUN   TestScheduleBuilderGivesEachOccurrenceIndependentIdentity
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestScheduleBuilderGivesEachOccurrenceIndependentIdentity (0.10s)
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/handler	1.233s
+=== RUN   TestReconcileDiscoveredFoldersMarksMissingAndRecovers
+2026/11/02 12:32:40 schema initialized at version 134
+2026/11/02 12:32:40 storage: schema migration check complete
+2026/11/02 12:32:40 storage: threading backfill deferred to background startup worker
+--- PASS: TestReconcileDiscoveredFoldersMarksMissingAndRecovers (0.08s)
+=== RUN   TestReconcileDiscoveredFoldersConfirmsRemovalAndFailsPendingWork
+2026/11/02 12:32:40 schema initialized at version 134
+2026/11/02 12:32:40 storage: schema migration check complete
+2026/11/02 12:32:40 storage: threading backfill deferred to background startup worker
+--- PASS: TestReconcileDiscoveredFoldersConfirmsRemovalAndFailsPendingWork (0.07s)
+=== RUN   TestReconcileDiscoveredFoldersDoesNotGuessAnIMAPRename
+2026/11/02 12:32:40 schema initialized at version 134
+2026/11/02 12:32:40 storage: schema migration check complete
+2026/11/02 12:32:40 storage: threading backfill deferred to background startup worker
+--- PASS: TestReconcileDiscoveredFoldersDoesNotGuessAnIMAPRename (0.06s)
+=== RUN   TestOutgoingSendLifecycleKeepsImmutablePayload
+2026/11/02 12:32:40 schema initialized at version 134
+2026/11/02 12:32:40 storage: schema migration check complete
+2026/11/02 12:32:40 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendLifecycleKeepsImmutablePayload (0.07s)
+=== RUN   TestOutgoingSendRetryWaitsForBackoffAndKeepsPayload
+2026/11/02 12:32:40 schema initialized at version 134
+2026/11/02 12:32:40 storage: schema migration check complete
+2026/11/02 12:32:40 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendRetryWaitsForBackoffAndKeepsPayload (0.07s)
+=== RUN   TestOutgoingSendRetrySurvivesDatabaseRestart
+2026/11/02 12:32:40 schema initialized at version 134
+2026/11/02 12:32:40 storage: schema migration check complete
+2026/11/02 12:32:40 storage: threading backfill deferred to background startup worker
+2026/11/02 12:32:40 schema at version 134, no migration needed
+2026/11/02 12:32:40 storage: schema migration check complete
+2026/11/02 12:32:40 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendRetrySurvivesDatabaseRestart (0.09s)
+=== RUN   TestScheduledVirtualFolderListsPendingScheduledDrafts
+2026/11/02 12:32:40 schema initialized at version 134
+2026/11/02 12:32:40 storage: schema migration check complete
+2026/11/02 12:32:40 storage: threading backfill deferred to background startup worker
+--- PASS: TestScheduledVirtualFolderListsPendingScheduledDrafts (0.08s)
+=== RUN   TestOutgoingSendUserSummaryAndRecoveryActions
+2026/11/02 12:32:40 schema initialized at version 134
+2026/11/02 12:32:40 storage: schema migration check complete
+2026/11/02 12:32:40 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendUserSummaryAndRecoveryActions (0.07s)
+=== RUN   TestOutgoingSendAmbiguousRetryRequiresConfirmation
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendAmbiguousRetryRequiresConfirmation (0.07s)
+=== RUN   TestSendScheduleCRUDOwnershipAndTransitions
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestSendScheduleCRUDOwnershipAndTransitions (0.07s)
+=== RUN   TestCreateSendScheduleValidatesRule
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestCreateSendScheduleValidatesRule (0.06s)
+=== RUN   TestMaterializeDailyDownTimeSendsOnlyLatestAndAdvances
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializeDailyDownTimeSendsOnlyLatestAndAdvances (0.06s)
+=== RUN   TestMaterializeKeepsPastDueWhenLaterTodayIsFuture
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializeKeepsPastDueWhenLaterTodayIsFuture (0.08s)
+=== RUN   TestMaterializeWeeklyFiltersWeekdays
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializeWeeklyFiltersWeekdays (0.08s)
+=== RUN   TestMaterializeDSTGapIsSkipped
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializeDSTGapIsSkipped (0.06s)
+=== RUN   TestMaterializeDSTAmbiguousSendsOnceAtEarlierInstant
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializeDSTAmbiguousSendsOnceAtEarlierInstant (0.06s)
+=== RUN   TestMaterializePausedSkipsAndResumeDoesNotBackfill
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializePausedSkipsAndResumeDoesNotBackfill (0.06s)
+=== RUN   TestPauseKeepsAlreadyFrozenInstance
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestPauseKeepsAlreadyFrozenInstance (0.06s)
+=== RUN   TestMaterializeBuilderFailureFailsOneDateAndContinues
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializeBuilderFailureFailsOneDateAndContinues (0.06s)
+=== RUN   TestMaterializeAutoEndsAtEndDate
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializeAutoEndsAtEndDate (0.06s)
+=== RUN   TestReconcileMirrorsOutgoingStatusAndKeepsHistory
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestReconcileMirrorsOutgoingStatusAndKeepsHistory (0.06s)
+=== RUN   TestMaterializeRestartIsIdempotent
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+2026/11/02 12:32:41 schema at version 134, no migration needed
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializeRestartIsIdempotent (0.08s)
+=== RUN   TestScheduledFolderCountCombinesPlansAndSingleSends
+2026/11/02 12:32:41 schema initialized at version 134
+2026/11/02 12:32:41 storage: schema migration check complete
+2026/11/02 12:32:41 storage: threading backfill deferred to background startup worker
+--- PASS: TestScheduledFolderCountCombinesPlansAndSingleSends (0.06s)
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/storage	1.808s

@@ -193,8 +193,8 @@ func (s *BlobStore) TryUserFileCleanup(owner string) (release func(), acquired b
 type UserFileCleanupResult struct {
 	// Messages counts message directories removed whole: ones of messages
 	// no longer in the database.
-	Uploads, Versions, Messages int
-	Skipped                     bool
+	Uploads, Versions, Messages, Schedules int
+	Skipped                                bool
 }
 
 // CleanupUserFiles must run under TryUserFileCleanup and a current, complete
@@ -362,10 +362,75 @@ func (s *BlobStore) cleanupMessageFiles(ctx context.Context, accounts []string, 
 					return err
 				}
 				if old {
-					if err := os.RemoveAll(path); err != nil {
-						return err
-					}
-					result.Versions++
+				if err := os.RemoveAll(path); err != nil {
+					return err
+				}
+				result.Versions++
+			}
+		}
+		}
+	}
+	return s.cleanupScheduleFiles(ctx, accounts, refs, cutoff, result)
+}
+
+// cleanupScheduleFiles removes schedule content revisions the database no
+// longer keeps attachment paths for: superseded revisions and ended plans
+// whose instances all reached a terminal state. Recent revisions are kept
+// even while unreferenced, so a content replacement mid-commit stays safe.
+func (s *BlobStore) cleanupScheduleFiles(ctx context.Context, accounts []string, refs fileReferences, cutoff time.Time, result *UserFileCleanupResult) error {
+	for _, id := range accounts {
+		root := filepath.Join(refs.base, id, "schedules")
+		if !realDirectory(refs.base, id, "schedules") {
+			continue
+		}
+		plans, err := os.ReadDir(root)
+		if err != nil {
+			return err
+		}
+		for _, plan := range plans {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if !plan.IsDir() || plan.Type()&os.ModeSymlink != 0 || !validScheduleID(plan.Name()) {
+				continue
+			}
+			planDir := filepath.Join(root, plan.Name())
+			versions, err := os.ReadDir(planDir)
+			if err != nil {
+				return err
+			}
+			removedAll := true
+			for _, version := range versions {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+				if !version.IsDir() || version.Type()&os.ModeSymlink != 0 || !versionName(version.Name()) {
+					removedAll = false
+					continue
+				}
+				path := filepath.Join(planDir, version.Name())
+				if refs.dirs[blobPathKey(path)] {
+					removedAll = false
+					continue
+				}
+				old, err := unchangedSince(ctx, path, cutoff)
+				if err != nil {
+					return err
+				}
+				if !old {
+					removedAll = false
+					continue
+				}
+				if err := os.RemoveAll(path); err != nil {
+					return err
+				}
+				result.Schedules++
+			}
+			if removedAll {
+				// Only remove an empty plan directory; never a directory
+				// holding files this pass did not inspect.
+				if entries, err := os.ReadDir(planDir); err == nil && len(entries) == 0 {
+					_ = os.Remove(planDir)
 				}
 			}
 		}

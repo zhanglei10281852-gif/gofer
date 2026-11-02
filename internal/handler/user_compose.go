@@ -291,6 +291,12 @@ func (h *Handler) registerUserCompose(private func(string, http.HandlerFunc)) {
 		{"POST /api/outgoing-sends/{id}/retry", func(h *Handler) http.HandlerFunc { return h.handleOutgoingSendRetry }},
 		{"POST /api/outgoing-sends/{id}/retry-now", func(h *Handler) http.HandlerFunc { return h.handleOutgoingSendRetryNow }},
 		{"POST /api/outgoing-sends/{id}/cancel", func(h *Handler) http.HandlerFunc { return h.handleOutgoingSendCancel }},
+		{"GET /api/send-schedules", func(h *Handler) http.HandlerFunc { return h.handleSendScheduleList }},
+		{"GET /api/send-schedules/{id}", func(h *Handler) http.HandlerFunc { return h.handleSendScheduleGet }},
+		{"GET /api/send-schedules/{id}/instances", func(h *Handler) http.HandlerFunc { return h.handleSendScheduleInstances }},
+		{"POST /api/send-schedules/{id}", func(h *Handler) http.HandlerFunc { return h.handleSendScheduleSettings }},
+		{"POST /api/send-schedules/{id}/content", func(h *Handler) http.HandlerFunc { return h.handleSendScheduleContent }},
+		{"POST /api/send-schedules/{id}/{action}", func(h *Handler) http.HandlerFunc { return h.handleSendScheduleAction }},
 	} {
 		private(route.pattern, h.userComposeHandler(route.handler))
 	}

@@ -5180,6 +5180,9 @@ func (db *DB) GetFolderEmailCountForUser(ctx context.Context, userID, folderID s
 }
 
 func (db *DB) GetFolderEmailCountFilteredForUser(ctx context.Context, userID, folderID string, filters models.EmailFilters) (int, error) {
+	if folderID == "scheduled" && filters.Participant == "" && emailFiltersEmpty(filters) {
+		return db.GetScheduledFolderCountForUser(ctx, userID)
+	}
 	if !isUnifiedFolderID(folderID) && filters.Participant == "" {
 		return db.GetFolderEmailCountFiltered(ctx, folderID, filters)
 	}

@@ -1,0 +1,110 @@
+=== RUN   TestReviewBacklog501Dates
+2026/11/02 12:35:06 schema initialized at version 134
+2026/11/02 12:35:06 storage: schema migration check complete
+2026/11/02 12:35:06 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:9: 501 due dates: frozen=0 skipped=0 history=0 cursor=2026-05-17
+    zz_delivery_review_test.go:10: Rubric 3: wanted latest=1 skips=500; got {ScheduleIDs:[] Frozen:0 Skipped:0 Failed:0 AutoEnded:[]} history=0
+--- FAIL: TestReviewBacklog501Dates (0.08s)
+=== RUN   TestReviewCanceledMaterializationRollsBack
+2026/11/02 12:35:06 schema initialized at version 134
+2026/11/02 12:35:06 storage: schema migration check complete
+2026/11/02 12:35:06 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:18: cancellation rolls back cursor and send; retry creates exactly one
+--- PASS: TestReviewCanceledMaterializationRollsBack (0.07s)
+=== RUN   TestReviewBacklog501Dates
+2026/11/02 12:35:06 schema initialized at version 134
+2026/11/02 12:35:06 storage: schema migration check complete
+2026/11/02 12:35:06 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:9: 501 due dates: frozen=0 skipped=0 history=0 cursor=2026-05-17
+    zz_delivery_review_test.go:10: Rubric 3: wanted latest=1 skips=500; got {ScheduleIDs:[] Frozen:0 Skipped:0 Failed:0 AutoEnded:[]} history=0
+--- FAIL: TestReviewBacklog501Dates (0.07s)
+=== RUN   TestReviewCanceledMaterializationRollsBack
+2026/11/02 12:35:06 schema initialized at version 134
+2026/11/02 12:35:06 storage: schema migration check complete
+2026/11/02 12:35:06 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:18: cancellation rolls back cursor and send; retry creates exactly one
+--- PASS: TestReviewCanceledMaterializationRollsBack (0.07s)
+=== RUN   TestReviewBacklog501Dates
+2026/11/02 12:35:06 schema initialized at version 134
+2026/11/02 12:35:06 storage: schema migration check complete
+2026/11/02 12:35:06 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:9: 501 due dates: frozen=0 skipped=0 history=0 cursor=2026-05-17
+    zz_delivery_review_test.go:10: Rubric 3: wanted latest=1 skips=500; got {ScheduleIDs:[] Frozen:0 Skipped:0 Failed:0 AutoEnded:[]} history=0
+--- FAIL: TestReviewBacklog501Dates (0.06s)
+=== RUN   TestReviewCanceledMaterializationRollsBack
+2026/11/02 12:35:07 schema initialized at version 134
+2026/11/02 12:35:07 storage: schema migration check complete
+2026/11/02 12:35:07 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:18: cancellation rolls back cursor and send; retry creates exactly one
+--- PASS: TestReviewCanceledMaterializationRollsBack (0.08s)
+FAIL
+FAIL	github.com/cristianadrielbraun/gofer/internal/storage	0.669s
+=== RUN   TestReviewFrozenAttachmentRetainedOnEdit
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:11: edit HTTP=200 frozen status=pending attachment exists=false
+    zz_delivery_review_test.go:12: Rubric 4/6: pending snapshot references deleted attachment: GetFileAttributesEx C:\Users\czxy4\AppData\Local\Temp\TestReviewFrozenAttachmentRetainedOnEdit3191406\002\blobs\victim-account\schedules\c0a52995-1dc9-4999-9c6c-c75c8483b7ed\5634847dfe8857274d7e119cf6d93ee0\attachments\1-memo.txt: The system cannot find the path specified.
+--- FAIL: TestReviewFrozenAttachmentRetainedOnEdit (0.09s)
+=== RUN   TestReviewEndPreservesOldPendingReference
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:21: detail HTTP=200 actual_history=201 returned=200 visible_failed=0 reported_unfinished=0 reported_total=200
+    zz_delivery_review_test.go:24: end HTTP=200 total=201 pending=1 pending_attachment_exists=false
+    zz_delivery_review_test.go:25: Rubric 4: end deleted attachment still referenced by oldest pending instance
+--- FAIL: TestReviewEndPreservesOldPendingReference (0.10s)
+=== RUN   TestReviewInterleavedContentCleanupDeletesCurrentVersion
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:33: A commit -> B commit -> B cleanup -> A cleanup: current_file_exists=false frozen=0 failed=1
+    zz_delivery_review_test.go:33: Rubric 6: earlier cleanup deletes current B attachment and future instance fails
+--- FAIL: TestReviewInterleavedContentCleanupDeletesCurrentVersion (0.08s)
+=== RUN   TestReviewFrozenAttachmentRetainedOnEdit
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:11: edit HTTP=200 frozen status=pending attachment exists=false
+    zz_delivery_review_test.go:12: Rubric 4/6: pending snapshot references deleted attachment: GetFileAttributesEx C:\Users\czxy4\AppData\Local\Temp\TestReviewFrozenAttachmentRetainedOnEdit3101192801\002\blobs\victim-account\schedules\359f383c-2047-4449-896e-783963d8de0b\634e4f7bebc365b52c0dbd4645f822b0\attachments\1-memo.txt: The system cannot find the path specified.
+--- FAIL: TestReviewFrozenAttachmentRetainedOnEdit (0.07s)
+=== RUN   TestReviewEndPreservesOldPendingReference
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:21: detail HTTP=200 actual_history=201 returned=200 visible_failed=0 reported_unfinished=0 reported_total=200
+    zz_delivery_review_test.go:24: end HTTP=200 total=201 pending=1 pending_attachment_exists=false
+    zz_delivery_review_test.go:25: Rubric 4: end deleted attachment still referenced by oldest pending instance
+--- FAIL: TestReviewEndPreservesOldPendingReference (0.12s)
+=== RUN   TestReviewInterleavedContentCleanupDeletesCurrentVersion
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:33: A commit -> B commit -> B cleanup -> A cleanup: current_file_exists=false frozen=0 failed=1
+    zz_delivery_review_test.go:33: Rubric 6: earlier cleanup deletes current B attachment and future instance fails
+--- FAIL: TestReviewInterleavedContentCleanupDeletesCurrentVersion (0.07s)
+=== RUN   TestReviewFrozenAttachmentRetainedOnEdit
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:11: edit HTTP=200 frozen status=pending attachment exists=false
+    zz_delivery_review_test.go:12: Rubric 4/6: pending snapshot references deleted attachment: GetFileAttributesEx C:\Users\czxy4\AppData\Local\Temp\TestReviewFrozenAttachmentRetainedOnEdit103128986\002\blobs\victim-account\schedules\7c787e70-cd9a-48bb-891b-94eb29886dc6\b87651f2018702f2cbda3ec0c86aa963\attachments\1-memo.txt: The system cannot find the path specified.
+--- FAIL: TestReviewFrozenAttachmentRetainedOnEdit (0.07s)
+=== RUN   TestReviewEndPreservesOldPendingReference
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:21: detail HTTP=200 actual_history=201 returned=200 visible_failed=0 reported_unfinished=0 reported_total=200
+    zz_delivery_review_test.go:24: end HTTP=200 total=201 pending=1 pending_attachment_exists=false
+    zz_delivery_review_test.go:25: Rubric 4: end deleted attachment still referenced by oldest pending instance
+--- FAIL: TestReviewEndPreservesOldPendingReference (0.09s)
+=== RUN   TestReviewInterleavedContentCleanupDeletesCurrentVersion
+2026/11/02 12:35:18 schema initialized at version 134
+2026/11/02 12:35:18 storage: schema migration check complete
+2026/11/02 12:35:18 storage: threading backfill deferred to background startup worker
+    zz_delivery_review_test.go:33: A commit -> B commit -> B cleanup -> A cleanup: current_file_exists=false frozen=0 failed=1
+    zz_delivery_review_test.go:33: Rubric 6: earlier cleanup deletes current B attachment and future instance fails
+--- FAIL: TestReviewInterleavedContentCleanupDeletesCurrentVersion (0.08s)
+FAIL
+FAIL	github.com/cristianadrielbraun/gofer/internal/handler	1.250s
+FAIL

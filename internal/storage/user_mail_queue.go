@@ -41,7 +41,9 @@ func (db *DB) NextAccountMailQueueAttempt(ctx context.Context, accountID string)
 		UNION ALL SELECT sent_copy_next_attempt_at FROM outgoing_sends WHERE account_id=? AND status='sent'
 		AND sent_copy_status IN ('pending','failed','ambiguous','copying') AND length(mime_data)>0
 		UNION ALL SELECT next_attempt_at FROM imap_draft_operations WHERE account_id=?
-	) ORDER BY julianday(replace(due,' +0000 UTC','')) LIMIT 1`, accountID, accountID, accountID).Scan(&next)
+		UNION ALL SELECT next_occurrence_at FROM send_schedules
+			WHERE account_id=? AND status='active' AND next_occurrence_at IS NOT NULL
+	) ORDER BY julianday(replace(due,' +0000 UTC','')) LIMIT 1`, accountID, accountID, accountID, accountID).Scan(&next)
 	if err != nil && err != sql.ErrNoRows {
 		return time.Time{}, err
 	}

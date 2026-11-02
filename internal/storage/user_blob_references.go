@@ -177,6 +177,46 @@ func blobReferencesTx(ctx context.Context, tx *sql.Tx, scope string, args ...any
 	if err != nil {
 		return refs, err
 	}
+	// Keep attachment paths in every active or paused plan's current content.
+	// An ended plan keeps them only while one of its instances is unfinished,
+	// so its files release only after the last result no longer needs them.
+	rows, err = tx.QueryContext(ctx, `SELECT s.content_json FROM send_schedules s JOIN accounts a ON a.id=s.account_id WHERE `+scope+` AND s.content_json<>''
+		AND (s.status IN ('active','paused')
+		     OR EXISTS (SELECT 1 FROM send_schedule_instances i
+		               WHERE i.schedule_id=s.id AND i.status IN ('pending','sending','failed','ambiguous')))`, args...)
+	if err != nil {
+		return refs, err
+	}
+	for rows.Next() {
+		var data string
+		if err := rows.Scan(&data); err != nil {
+			rows.Close()
+			return refs, err
+		}
+		if !strings.HasPrefix(strings.TrimSpace(data), "{") {
+			rows.Close()
+			return refs, fmt.Errorf("retained schedule content is not an object")
+		}
+		var snapshot struct {
+			Attachments []struct {
+				Path string `json:"path"`
+			} `json:"attachments"`
+		}
+		if err := json.Unmarshal([]byte(data), &snapshot); err != nil {
+			rows.Close()
+			return refs, fmt.Errorf("read retained schedule files: %w", err)
+		}
+		for _, attachment := range snapshot.Attachments {
+			if attachment.Path != "" {
+				keep[attachment.Path] = true
+			}
+		}
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return refs, err
+	}
 	if err := ctx.Err(); err != nil {
 		return refs, err
 	}

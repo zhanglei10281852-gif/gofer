@@ -1,0 +1,62 @@
+2026/11/02 12:02:32 boot: loading configuration
+2026/11/02 12:02:32 boot: database path resolved to data/gofer.db
+2026/11/02 12:02:32 boot: exclusive database lock acquired
+2026/11/02 12:02:32 schema initialized at version 134
+2026/11/02 12:02:32 storage: schema migration check complete
+2026/11/02 12:02:32 storage: threading backfill deferred to background startup worker
+2026/11/02 12:02:32 boot: database opened
+2026/11/02 12:02:32 generated new secret key at data\secret.key
+2026/11/02 12:02:32 boot: encryption key loaded
+2026/11/02 12:02:32 boot: account store initialized
+2026/11/02 12:02:32 boot: blob store initialized
+2026/11/02 12:02:32 boot: authentication mode=personal
+2026/11/02 12:02:32 boot: mailbox credential service initialized
+2026/11/02 12:02:32 boot: default user ensured
+2026/11/02 12:02:32 boot: session cleanup worker started
+2026/11/02 12:02:32 boot: sync orchestrator initialized
+2026/11/02 12:02:32 generated new VAPID key pair in data
+2026/11/02 12:02:32 boot: web push VAPID keys loaded
+2026/11/02 12:02:32 boot: notification worker started
+2026/11/02 12:02:32 boot: background threading worker started
+2026/11/02 12:02:32 storage: EnsureThreading started
+2026/11/02 12:02:32 contacts sync: startup sync started
+2026/11/02 12:02:32 storage: EnsureThreading not needed
+2026/11/02 12:02:32 boot: background threading worker finished
+2026/11/02 12:02:32 avatar: scheduled backfill worker started
+2026/11/02 12:02:32 contacts sync: startup sync finished
+2026/11/02 12:02:32 boot: HTTP routes registered
+2026/11/02 12:02:32 delete account cleanup: no pending accounts
+2026/11/02 12:02:32 delete user cleanup: no pending users
+2026/11/02 12:02:32 boot: sync orchestrator startup launched
+2026/11/02 12:02:32 sync: startup scan started
+2026/11/02 12:02:32 sync: found 0 account(s)
+2026/11/02 12:02:32 sync: Gmail API active poll worker started
+2026/11/02 12:02:32 sync: scheduled sync worker started
+2026/11/02 12:02:33 sync: startup scan complete
+2026/11/02 12:02:32 avatar: scheduled backfill worker finished processed=0 found=0 missing=0 errors=0
+
+────────────────────────────────────────────────────────────
+ PERSONAL SETUP REQUIRED
+
+ Open: http://127.0.0.1:18099/setup
+
+ Token (shown once):
+ setup_token: [REDACTED_RUNTIME_SETUP_TOKEN]
+ Expires: 2026-11-02 12:32:32 CST (UTC+08:00) (server local time)
+
+ Lost or expired token? Run, with Gofer running or stopped:
+ ./gofer auth setup-token rotate
+ Use the same GOFER_DB_PATH.
+────────────────────────────────────────────────────────────
+
+2026/11/02 12:03:28 script policy: script-src-elem blocked inline on http://127.0.0.1:18099/setup (:367) ""
+2026/11/02 12:03:42 script policy: script-src-elem blocked inline on http://127.0.0.1:18099/setup (:367) ""
+2026/11/02 12:04:51 script policy: script-src-elem blocked inline on http://127.0.0.1:18099/setup (:367) ""
+2026/11/02 12:05:59 script policy: script-src-elem blocked inline on http://127.0.0.1:18099/setup/owner (:367) ""
+2026/11/02 12:07:15 script policy: script-src-elem blocked inline on http://127.0.0.1:18099/setup/owner (:367) ""
+2026/11/02 12:08:27 script policy: script-src-elem blocked inline on http://127.0.0.1:18099/settings/security (:367) ""
+2026/11/02 12:08:35 script policy: script-src-elem blocked inline on http://127.0.0.1:18099/folder/inbox?sort_by=date&sort_order=desc (:367) ""
+2026/11/02 12:17:32 avatar: scheduled backfill worker started
+2026/11/02 12:17:32 avatar: scheduled backfill worker finished processed=0 found=0 missing=0 errors=0
+2026/11/02 12:32:32 avatar: scheduled backfill worker started
+2026/11/02 12:32:32 avatar: scheduled backfill worker finished processed=0 found=0 missing=0 errors=0

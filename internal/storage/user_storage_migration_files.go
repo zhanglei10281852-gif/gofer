@@ -219,6 +219,46 @@ func InspectUserStorageMigrationFiles(ctx context.Context, source *DB, workingDi
 	if err != nil {
 		return result, err
 	}
+	rows, err = tx.QueryContext(ctx, `SELECT a.user_id, s.id, s.content_json,
+		s.status IN ('active','paused')
+		  OR EXISTS (SELECT 1 FROM send_schedule_instances i
+		             WHERE i.schedule_id=s.id AND i.status IN ('pending','sending','failed','ambiguous'))
+	 FROM send_schedules s JOIN accounts a ON a.id=s.account_id WHERE s.content_json<>'' ORDER BY s.id`)
+	if err != nil {
+		return result, err
+	}
+	for rows.Next() {
+		var owner, id, data string
+		var retained bool
+		if err := rows.Scan(&owner, &id, &data, &retained); err != nil {
+			rows.Close()
+			return result, err
+		}
+		migrationDigestFields(references, "schedule", owner, id, data, fmt.Sprint(retained))
+		if !retained {
+			continue
+		}
+		var snapshot struct {
+			Attachments []struct {
+				Path string `json:"path"`
+			} `json:"attachments"`
+		}
+		if err := json.Unmarshal([]byte(data), &snapshot); err != nil || !strings.HasPrefix(strings.TrimSpace(data), "{") {
+			result.UnparsedSnapshots++
+			continue
+		}
+		for _, attachment := range snapshot.Attachments {
+			if err := check(owner, attachment.Path, "", false); err != nil {
+				rows.Close()
+				return result, err
+			}
+		}
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return result, err
+	}
 	rows, err = tx.QueryContext(ctx, `SELECT email_hash,storage_path FROM sender_avatars WHERE coalesce(storage_path,'')<>'' ORDER BY email_hash`)
 	if err != nil {
 		return result, err

@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "passed": true,
+    "reason": ""
+  },
+  {
+    "id": 2,
+    "passed": true,
+    "reason": ""
+  },
+  {
+    "id": 3,
+    "passed": false,
+    "reason": "积压501个日期时丢弃全部到期候选且不记录跳过"
+  },
+  {
+    "id": 4,
+    "passed": false,
+    "reason": "结束计划只检查最近200次实例并删除旧待发实例引用的附件"
+  },
+  {
+    "id": 5,
+    "passed": true,
+    "reason": ""
+  },
+  {
+    "id": 6,
+    "passed": false,
+    "reason": "交错内容编辑的旧清理删除当前版本附件导致下一实例创建失败"
+  },
+  {
+    "id": 7,
+    "passed": false,
+    "reason": "详情截断为最近200次并把旧失败实例排除在未完成计数外"
+  },
+  {
+    "id": 8,
+    "passed": true,
+    "reason": ""
+  }
+]

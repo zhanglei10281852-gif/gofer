@@ -1,0 +1,46 @@
+=== RUN   TestCalendarEditorShowsUTCEventsInTheUsersZone
+panic: test timed out after 15s
+	running tests:
+		TestCalendarEditorShowsUTCEventsInTheUsersZone (15s)
+
+goroutine 18 [running]:
+testing.(*M).startAlarm.func1()
+	C:/Users/czxy4/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.1.windows-amd64/src/testing/testing.go:2959 +0x34a
+created by time.goFunc
+	C:/Users/czxy4/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.1.windows-amd64/src/time/sleep.go:182 +0x2d
+
+goroutine 1 [chan receive]:
+testing.(*T).Run(0x94ca4120e00, {0x7ff71a5edefa?, 0x94ca439faa8?}, 0x7ff71b9fc598)
+	C:/Users/czxy4/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.1.windows-amd64/src/testing/testing.go:2266 +0x4d2
+testing.runTests.func1(0x94ca4120e00)
+	C:/Users/czxy4/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.1.windows-amd64/src/testing/testing.go:2742 +0x37
+testing.tRunner(0x94ca4120e00, 0x94ca439fbc8)
+	C:/Users/czxy4/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.1.windows-amd64/src/testing/testing.go:2193 +0xc3
+testing.runTests({0x7ff71a5c3ae7, 0x24}, {0x7ff71a605785, 0x35}, 0x94ca435adf8, {0x7ff71bcc28c0, 0x33b, 0x33b}, {0xc2b2228f5692b8bc, 0x37e7d6fb5, ...})
+	C:/Users/czxy4/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.1.windows-amd64/src/testing/testing.go:2740 +0x505
+testing.(*M).Run(0x94ca43e2320)
+	C:/Users/czxy4/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.1.windows-amd64/src/testing/testing.go:2600 +0x6af
+main.main()
+	_testmain.go:1698 +0x9b
+
+goroutine 9 [select]:
+github.com/cristianadrielbraun/gofer/internal/mail/imap.(*Pool).reap(0x94ca42e51d0)
+	C:/Users/czxy4/Documents/Codex/2026-11-02/codex-exec-skill-f-swe-swe/work/gofer-review/baseline/internal/mail/imap/pool.go:245 +0xf4
+created by github.com/cristianadrielbraun/gofer/internal/mail/imap.NewPool in goroutine 1
+	C:/Users/czxy4/Documents/Codex/2026-11-02/codex-exec-skill-f-swe-swe/work/gofer-review/baseline/internal/mail/imap/pool.go:77 +0x1a5
+
+goroutine 10 [runnable]:
+time.Time.Zone({0x0, 0xedf052b00, 0x94ca43e48c0})
+	C:/Users/czxy4/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.1.windows-amd64/src/time/time.go:1403 +0x5f
+github.com/cristianadrielbraun/gofer/internal/handler.calendarZonesMatch(0x94ca43e48c0, 0x94ca43e4770)
+	C:/Users/czxy4/Documents/Codex/2026-11-02/codex-exec-skill-f-swe-swe/work/gofer-review/baseline/internal/handler/calendar_update.go:572 +0x1e5
+github.com/cristianadrielbraun/gofer/internal/handler.calendarEditData({{0x7ff71a80a4b0, 0x1}, {0x0, 0x0}, {0x0, 0x0}, {0x0, 0x0}, {0x0, 0x0}, ...}, ...)
+	C:/Users/czxy4/Documents/Codex/2026-11-02/codex-exec-skill-f-swe-swe/work/gofer-review/baseline/internal/handler/calendar_update.go:194 +0x257
+github.com/cristianadrielbraun/gofer/internal/handler.TestCalendarEditorShowsUTCEventsInTheUsersZone(0x94ca4121000)
+	C:/Users/czxy4/Documents/Codex/2026-11-02/codex-exec-skill-f-swe-swe/work/gofer-review/baseline/internal/handler/calendar_timezones_test.go:74 +0xc45
+testing.tRunner(0x94ca4121000, 0x7ff71b9fc598)
+	C:/Users/czxy4/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.1.windows-amd64/src/testing/testing.go:2193 +0xc3
+created by testing.(*T).Run in goroutine 1
+	C:/Users/czxy4/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.1.windows-amd64/src/testing/testing.go:2258 +0x4b4
+FAIL	github.com/cristianadrielbraun/gofer/internal/handler	15.320s
+FAIL

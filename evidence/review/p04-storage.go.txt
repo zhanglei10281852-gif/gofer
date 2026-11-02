@@ -1,0 +1,19 @@
+package storage
+import ("context"; "testing"; "time"; "github.com/cristianadrielbraun/gofer/internal/recurrence")
+func TestReviewBacklog501Dates(t *testing.T) {
+ db:=newScheduleTestDB(t); insertTestPlan(t,db,map[string]string{"id":"plan","start":"2025-01-01","cursor":"2025-01-01"})
+ now:=utcTime("2025-01-01",10).AddDate(0,0,500)
+ got,err:=db.MaterializeDueScheduleInstances(t.Context(),"account",now,fakeScheduleBuilder(nil));if err!=nil{t.Fatal(err)}
+ var n int;db.Read().QueryRow("SELECT COUNT(*) FROM send_schedule_instances").Scan(&n)
+ plan,_:=db.GetSendScheduleForAccount(t.Context(),"account","plan")
+ t.Logf("501 due dates: frozen=%d skipped=%d history=%d cursor=%s",got.Frozen,got.Skipped,n,plan.CursorDate)
+ if got.Frozen!=1||got.Skipped!=500||n!=501{t.Errorf("Rubric 3: wanted latest=1 skips=500; got %+v history=%d",got,n)}
+}
+func TestReviewCanceledMaterializationRollsBack(t *testing.T) {
+ db:=newScheduleTestDB(t);insertTestPlan(t,db,map[string]string{"id":"plan"});ctx,cancel:=context.WithCancel(t.Context())
+ _,err:=db.MaterializeDueScheduleInstances(ctx,"account",utcTime("2026-03-01",10),func(id string,b []byte,o recurrence.Occurrence)(PreparedScheduleSend,error){cancel();return fakeScheduleBuilder(nil)(id,b,o)})
+ if err==nil{t.Fatal("cancel swallowed")};time.Sleep(10*time.Millisecond)
+ if n:=countOutgoingForPlan(t,db);n!=0{t.Fatalf("cancel leaked sends=%d",n)}
+ p,_:=db.GetSendScheduleForAccount(t.Context(),"account","plan");if p.CursorDate!="2026-03-01"{t.Fatalf("cursor=%s",p.CursorDate)}
+ got,err:=db.MaterializeDueScheduleInstances(t.Context(),"account",utcTime("2026-03-01",10),fakeScheduleBuilder(nil));if err!=nil||got.Frozen!=1{t.Fatalf("retry %+v %v",got,err)};t.Log("cancellation rolls back cursor and send; retry creates exactly one")
+}

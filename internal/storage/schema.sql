@@ -1619,6 +1619,7 @@ CREATE TABLE IF NOT EXISTS outgoing_sends (
     send_after DATETIME NOT NULL,
     next_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     is_scheduled INTEGER NOT NULL DEFAULT 0,
+    schedule_instance_id TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL DEFAULT 'pending',
     attempt_count INTEGER NOT NULL DEFAULT 0,
     last_error TEXT NOT NULL DEFAULT '',
@@ -1644,6 +1645,64 @@ ON outgoing_sends(account_id, status, send_after);
 
 CREATE INDEX IF NOT EXISTS idx_outgoing_sends_sent_copy
 ON outgoing_sends(status, sent_copy_status, sent_copy_next_attempt_at);
+
+CREATE INDEX IF NOT EXISTS idx_outgoing_sends_schedule_instance
+ON outgoing_sends(schedule_instance_id) WHERE schedule_instance_id <> '';
+
+-- Recurring send schedules (daily/weekly). The plan owns its current content
+-- template; each due local date freezes an independent instance row and its
+-- own outgoing_sends delivery snapshot.
+CREATE TABLE IF NOT EXISTS send_schedules (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'paused', 'ended')),
+    recurrence TEXT NOT NULL CHECK (recurrence IN ('daily', 'weekly')),
+    timezone TEXT NOT NULL,
+    hour INTEGER NOT NULL CHECK (hour BETWEEN 0 AND 23),
+    minute INTEGER NOT NULL CHECK (minute BETWEEN 0 AND 59),
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL DEFAULT '',
+    weekdays TEXT NOT NULL DEFAULT '',
+    content_json TEXT NOT NULL DEFAULT '',
+    cursor_date TEXT NOT NULL DEFAULT '',
+    next_occurrence_at DATETIME,
+    ended_reason TEXT NOT NULL DEFAULT '',
+    paused_at DATETIME,
+    ended_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_send_schedules_account
+ON send_schedules(account_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_send_schedules_next
+ON send_schedules(status, next_occurrence_at) WHERE status = 'active';
+
+CREATE TABLE IF NOT EXISTS send_schedule_instances (
+    id TEXT PRIMARY KEY,
+    schedule_id TEXT NOT NULL REFERENCES send_schedules(id) ON DELETE CASCADE,
+    local_date TEXT NOT NULL,
+    scheduled_at DATETIME NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('pending', 'sending', 'sent', 'failed', 'ambiguous', 'canceled', 'skipped')),
+    skip_reason TEXT NOT NULL DEFAULT '' CHECK (skip_reason IN ('', 'dst_gap', 'missed', 'paused')),
+    outgoing_send_id TEXT NOT NULL DEFAULT '',
+    last_error TEXT NOT NULL DEFAULT '',
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    sent_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(schedule_id, local_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_send_schedule_instances_schedule
+ON send_schedule_instances(schedule_id, local_date);
+
+CREATE INDEX IF NOT EXISTS idx_send_schedule_instances_status
+ON send_schedule_instances(status, scheduled_at);
+
+CREATE INDEX IF NOT EXISTS idx_send_schedule_instances_send
+ON send_schedule_instances(outgoing_send_id) WHERE outgoing_send_id <> '';
 
 CREATE TABLE IF NOT EXISTS imap_draft_states (
     account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
@@ -1836,4 +1895,4 @@ CREATE TABLE IF NOT EXISTS mail_rule_runs (
 );
 CREATE INDEX IF NOT EXISTS idx_mail_rule_runs_user ON mail_rule_runs(user_id, id);
 
-INSERT OR REPLACE INTO schema_version (version) VALUES (133);
+INSERT OR REPLACE INTO schema_version (version) VALUES (134);

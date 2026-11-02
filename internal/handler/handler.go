@@ -616,6 +616,12 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/outgoing-sends/{id}/retry", h.handleOutgoingSendRetry)
 	mux.HandleFunc("POST /api/outgoing-sends/{id}/retry-now", h.handleOutgoingSendRetryNow)
 	mux.HandleFunc("POST /api/outgoing-sends/{id}/cancel", h.handleOutgoingSendCancel)
+	mux.HandleFunc("GET /api/send-schedules", h.handleSendScheduleList)
+	mux.HandleFunc("GET /api/send-schedules/{id}", h.handleSendScheduleGet)
+	mux.HandleFunc("GET /api/send-schedules/{id}/instances", h.handleSendScheduleInstances)
+	mux.HandleFunc("POST /api/send-schedules/{id}", h.handleSendScheduleSettings)
+	mux.HandleFunc("POST /api/send-schedules/{id}/content", h.handleSendScheduleContent)
+	mux.HandleFunc("POST /api/send-schedules/{id}/{action}", h.handleSendScheduleAction)
 	mux.HandleFunc("GET /api/mail-operations", h.handleMailOperations)
 	mux.HandleFunc("POST /api/mail-operations/{id}/retry", h.handleRetryMailOperation)
 	mux.HandleFunc("GET /api/sidebar/mail", h.handleMailSidebar)
@@ -5964,6 +5970,25 @@ func (h *Handler) handleComposeSchedule(w http.ResponseWriter, r *http.Request) 
 	if saved.Sender != nil {
 		// The form says how to send it, which the draft alone can't.
 		saved.Sender.apply(msg)
+	}
+	if repeat := strings.TrimSpace(r.FormValue("schedule_repeat")); repeat == scheduleRepeatDaily || repeat == scheduleRepeatWeekly {
+		plan, requestErr := h.createRecurringSchedule(r, loc, r.FormValue("schedule_date"), saved, msg)
+		if requestErr != nil {
+			writeComposeRequestError(w, requestErr)
+			return
+		}
+		nextOccurrence := ""
+		if plan.HasNextOccurrence {
+			nextOccurrence = plan.NextOccurrenceAt.Format(time.RFC3339)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"status":          "scheduled",
+			"schedule_id":     plan.ID,
+			"scheduled_for":   nextOccurrence,
+			"schedule_repeat": plan.Recurrence,
+		})
+		return
 	}
 	scheduled, err := h.queueOutgoingMessage(r.Context(), saved.AccountID, saved.MessageID, saved.DraftID, msg, scheduledFor, true)
 	if errors.Is(err, providers.ErrJMAPDisabled) {

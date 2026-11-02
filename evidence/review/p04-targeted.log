@@ -1,0 +1,189 @@
+testing: warning: no tests to run
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/recurrence	0.705s [no tests to run]
+=== RUN   TestReconcileDiscoveredFoldersMarksMissingAndRecovers
+2026/11/02 12:29:08 schema initialized at version 134
+2026/11/02 12:29:08 storage: schema migration check complete
+2026/11/02 12:29:08 storage: threading backfill deferred to background startup worker
+--- PASS: TestReconcileDiscoveredFoldersMarksMissingAndRecovers (0.12s)
+=== RUN   TestReconcileDiscoveredFoldersConfirmsRemovalAndFailsPendingWork
+2026/11/02 12:29:08 schema initialized at version 134
+2026/11/02 12:29:08 storage: schema migration check complete
+2026/11/02 12:29:08 storage: threading backfill deferred to background startup worker
+--- PASS: TestReconcileDiscoveredFoldersConfirmsRemovalAndFailsPendingWork (0.13s)
+=== RUN   TestReconcileDiscoveredFoldersDoesNotGuessAnIMAPRename
+2026/11/02 12:29:08 schema initialized at version 134
+2026/11/02 12:29:08 storage: schema migration check complete
+2026/11/02 12:29:08 storage: threading backfill deferred to background startup worker
+--- PASS: TestReconcileDiscoveredFoldersDoesNotGuessAnIMAPRename (0.10s)
+=== RUN   TestScheduledVirtualFolderListsPendingScheduledDrafts
+2026/11/02 12:29:08 schema initialized at version 134
+2026/11/02 12:29:08 storage: schema migration check complete
+2026/11/02 12:29:08 storage: threading backfill deferred to background startup worker
+--- PASS: TestScheduledVirtualFolderListsPendingScheduledDrafts (0.18s)
+=== RUN   TestSendScheduleCRUDOwnershipAndTransitions
+2026/11/02 12:29:08 schema initialized at version 134
+2026/11/02 12:29:08 storage: schema migration check complete
+2026/11/02 12:29:08 storage: threading backfill deferred to background startup worker
+--- PASS: TestSendScheduleCRUDOwnershipAndTransitions (0.11s)
+=== RUN   TestMaterializeDailyDownTimeSendsOnlyLatestAndAdvances
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializeDailyDownTimeSendsOnlyLatestAndAdvances (0.08s)
+=== RUN   TestMaterializeKeepsPastDueWhenLaterTodayIsFuture
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializeKeepsPastDueWhenLaterTodayIsFuture (0.08s)
+=== RUN   TestMaterializeWeeklyFiltersWeekdays
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializeWeeklyFiltersWeekdays (0.08s)
+=== RUN   TestMaterializeDSTGapIsSkipped
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializeDSTGapIsSkipped (0.08s)
+=== RUN   TestMaterializeDSTAmbiguousSendsOnceAtEarlierInstant
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializeDSTAmbiguousSendsOnceAtEarlierInstant (0.07s)
+=== RUN   TestMaterializePausedSkipsAndResumeDoesNotBackfill
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializePausedSkipsAndResumeDoesNotBackfill (0.07s)
+=== RUN   TestPauseKeepsAlreadyFrozenInstance
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestPauseKeepsAlreadyFrozenInstance (0.07s)
+=== RUN   TestMaterializeBuilderFailureFailsOneDateAndContinues
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializeBuilderFailureFailsOneDateAndContinues (0.06s)
+=== RUN   TestMaterializeAutoEndsAtEndDate
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializeAutoEndsAtEndDate (0.07s)
+=== RUN   TestReconcileMirrorsOutgoingStatusAndKeepsHistory
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestReconcileMirrorsOutgoingStatusAndKeepsHistory (0.07s)
+=== RUN   TestMaterializeRestartIsIdempotent
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+2026/11/02 12:29:09 schema at version 134, no migration needed
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestMaterializeRestartIsIdempotent (0.08s)
+=== RUN   TestScheduledFolderCountCombinesPlansAndSingleSends
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestScheduledFolderCountCombinesPlansAndSingleSends (0.07s)
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/storage	1.923s
+=== RUN   TestScheduleBlobStoresRevisionsAndDeletesPlan
+--- PASS: TestScheduleBlobStoresRevisionsAndDeletesPlan (0.01s)
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/store	0.934s
+=== RUN   TestResolveJMAPAccountChanges
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestResolveJMAPAccountChanges (0.10s)
+=== RUN   TestResolveAvatarWithRetryRetriesOnce
+--- PASS: TestResolveAvatarWithRetryRetriesOnce (0.25s)
+=== RUN   TestResolveAvatarWithRetryStopsOnCanceledContext
+--- PASS: TestResolveAvatarWithRetryStopsOnCanceledContext (0.00s)
+=== RUN   TestResolveCalDAVHrefFollowsICloudPartitionServer
+--- PASS: TestResolveCalDAVHrefFollowsICloudPartitionServer (0.00s)
+=== RUN   TestResolveCalDAVHrefAcceptsSameRegisteredDomain
+--- PASS: TestResolveCalDAVHrefAcceptsSameRegisteredDomain (0.00s)
+=== RUN   TestResolveCalDAVHrefRejectsOtherServers
+--- PASS: TestResolveCalDAVHrefRejectsOtherServers (0.00s)
+=== RUN   TestScheduledOneTimeFromKeepsItsWayOfSending
+2026/11/02 12:29:09 schema initialized at version 134
+2026/11/02 12:29:09 storage: schema migration check complete
+2026/11/02 12:29:09 storage: threading backfill deferred to background startup worker
+--- PASS: TestScheduledOneTimeFromKeepsItsWayOfSending (0.12s)
+=== RUN   TestGmailIdentitySendsThroughItsOwnServer
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+2026/11/02 12:29:10 outgoing-send: Sent copy 26ac3f50-aee6-431a-9b8c-5b7026a956ed ambiguous; retry at 2026-11-02T04:29:33Z: google api returned 502: bad gateway
+--- PASS: TestGmailIdentitySendsThroughItsOwnServer (0.08s)
+=== RUN   TestIMAPIdentitySendsThroughItsOwnServerAndKeepsASentCopy
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+--- PASS: TestIMAPIdentitySendsThroughItsOwnServerAndKeepsASentCopy (0.07s)
+=== RUN   TestIdentitySendFailsWhenItsServerIsGone
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+--- PASS: TestIdentitySendFailsWhenItsServerIsGone (0.07s)
+=== RUN   TestOutgoingWorkerRetriesTemporaryGmailFailureWithSameSnapshot
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+2026/11/02 12:29:10 outgoing-send: retry 3a3386b5-490e-4080-8d2b-aef11271c29f attempt=1 at=2026-11-02T04:29:25Z: google api returned 503: temporarily unavailable
+--- PASS: TestOutgoingWorkerRetriesTemporaryGmailFailureWithSameSnapshot (0.07s)
+=== RUN   TestSentCopyWorkerAppendsExactMIMEAndLinksRemoteUID
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+--- PASS: TestSentCopyWorkerAppendsExactMIMEAndLinksRemoteUID (0.07s)
+=== RUN   TestInterruptedSentCopySearchesBeforeAppendingAgain
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+--- PASS: TestInterruptedSentCopySearchesBeforeAppendingAgain (0.07s)
+=== RUN   TestSendScheduleAPIOwnership
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+--- PASS: TestSendScheduleAPIOwnership (0.08s)
+=== RUN   TestScheduleContentEditKeepsFrozenSnapshot
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+--- PASS: TestScheduleContentEditKeepsFrozenSnapshot (0.07s)
+=== RUN   TestSchedulePauseResumeEndLifecycle
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+--- PASS: TestSchedulePauseResumeEndLifecycle (0.08s)
+=== RUN   TestScheduleBuilderGivesEachOccurrenceIndependentIdentity
+2026/11/02 12:29:10 schema initialized at version 134
+2026/11/02 12:29:10 storage: schema migration check complete
+2026/11/02 12:29:10 storage: threading backfill deferred to background startup worker
+--- PASS: TestScheduleBuilderGivesEachOccurrenceIndependentIdentity (0.06s)
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/handler	1.551s
+=== RUN   TestSendRawClassifiesSMTPRepliesBeforeAcceptance
+=== RUN   TestSendRawClassifiesSMTPRepliesBeforeAcceptance/temporary
+=== RUN   TestSendRawClassifiesSMTPRepliesBeforeAcceptance/permanent
+--- PASS: TestSendRawClassifiesSMTPRepliesBeforeAcceptance (0.00s)
+    --- PASS: TestSendRawClassifiesSMTPRepliesBeforeAcceptance/temporary (0.00s)
+    --- PASS: TestSendRawClassifiesSMTPRepliesBeforeAcceptance/permanent (0.00s)
+=== RUN   TestSendRawIsAmbiguousWhenFinalDeliveryReplyTimesOut
+--- PASS: TestSendRawIsAmbiguousWhenFinalDeliveryReplyTimesOut (0.10s)
+=== RUN   TestSendRawClassifiesExplicitFinalDeliveryReply
+=== RUN   TestSendRawClassifiesExplicitFinalDeliveryReply/temporary
+=== RUN   TestSendRawClassifiesExplicitFinalDeliveryReply/permanent
+--- PASS: TestSendRawClassifiesExplicitFinalDeliveryReply (0.00s)
+    --- PASS: TestSendRawClassifiesExplicitFinalDeliveryReply/temporary (0.00s)
+    --- PASS: TestSendRawClassifiesExplicitFinalDeliveryReply/permanent (0.00s)
+=== RUN   TestSendKeepsBccAsEnvelopeOnly
+--- PASS: TestSendKeepsBccAsEnvelopeOnly (0.00s)
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/mail/smtp	0.907s

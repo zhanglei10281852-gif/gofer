@@ -6494,6 +6494,8 @@ document.addEventListener("DOMContentLoaded", function () {
       try { data = JSON.parse(e.data) } catch (_) { data = null }
       if (data && data.folder_id === "scheduled") {
         refreshMailSidebarBody()
+        if (window.loadSendSchedulePanel) window.loadSendSchedulePanel()
+        refreshSidebarUnread()
         return
       }
       refreshSidebarUnread()
@@ -18516,15 +18518,23 @@ function scheduleCompose(fromPane, trigger) {
     showSendStatus("failed", "Choose a time at least 1 minute in the future.")
     return
   }
+  if (window.validateScheduleRepeatForm) {
+    var repeatError = window.validateScheduleRepeatForm(form)
+    if (repeatError) {
+      showSendStatus("failed", repeatError)
+      return
+    }
+  }
   var params = new URLSearchParams()
-  var inputs = form.querySelectorAll("input, textarea")
+  var inputs = form.querySelectorAll("input, textarea, select")
   for (var i = 0; inputs && i < inputs.length; i++) {
     if (inputs[i].name && !_composeSkipsField(form, inputs[i])) params.append(inputs[i].name, inputs[i].value)
   }
   params.set("schedule_date", dateValue)
   params.set("schedule_hour", hourValue)
   params.set("schedule_minute", minuteValue)
-  params.set("schedule_timezone", getGoferTimezone())
+  var tzSelect = form.querySelector("[data-compose-schedule-tz]")
+  params.set("schedule_timezone", tzSelect && tzSelect.value ? tzSelect.value : getGoferTimezone())
 
   closeComposeSchedulePopover(trigger)
   showSendStatus("sending", "Scheduling...")
@@ -18550,6 +18560,7 @@ function scheduleCompose(fromPane, trigger) {
     form.dataset.composeDirty = "false"
     var labelDate = data && data.scheduled_for ? new Date(data.scheduled_for) : scheduledAt
     showSendStatus("scheduled", "Will send " + formatGoferDateTime(labelDate))
+    if (data && data.schedule_id && window.loadSendSchedulePanel) window.loadSendSchedulePanel()
     setTimeout(function () {
       if (fromPane) {
         setMailViewEmpty()

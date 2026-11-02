@@ -273,6 +273,7 @@ func (h *Handler) StartOutgoingSendWorker(ctx context.Context) {
 			log.Printf("imap-draft: marked %d interrupted operation(s) ambiguous", count)
 		}
 		h.prepareMigratedOutgoingSends(ctx)
+		h.runDueScheduleMaterializers(ctx)
 		h.runDueOutgoingSends(ctx)
 		h.runDueSentCopies(ctx)
 		h.runDueIMAPDraftOperations(ctx)
@@ -284,16 +285,49 @@ func (h *Handler) StartOutgoingSendWorker(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case <-h.outgoingWake:
+				h.runDueScheduleMaterializers(ctx)
 				h.runDueOutgoingSends(ctx)
 				h.runDueSentCopies(ctx)
 				h.runDueIMAPDraftOperations(ctx)
 			case <-ticker.C:
+				h.runDueScheduleMaterializers(ctx)
 				h.runDueOutgoingSends(ctx)
 				h.runDueSentCopies(ctx)
 				h.runDueIMAPDraftOperations(ctx)
 			}
 		}
 	}()
+}
+
+// runDueScheduleMaterializers freezes due recurring-schedule instances before
+// the ordinary send sweep claims them, and mirrors delivery status back onto
+// already-frozen instances. It is local-only work; failures only log.
+func (h *Handler) runDueScheduleMaterializers(ctx context.Context) {
+	accounts, err := h.db.ListAccountsForScheduleMaintenance(ctx)
+	if err != nil {
+		log.Printf("outgoing-schedule: list accounts: %v", err)
+		return
+	}
+	for _, accountID := range accounts {
+		cfg, err := h.accountStore.GetConfig(ctx, accountID)
+		if err != nil {
+			log.Printf("outgoing-schedule: account %s config unavailable: %v", accountID, err)
+			continue
+		}
+		report, err := h.db.MaterializeDueScheduleInstances(ctx, accountID, h.outgoingNowUTC(), h.scheduleSendBuilder(cfg))
+		if err != nil {
+			log.Printf("outgoing-schedule: materialize account %s: %v", accountID, err)
+			continue
+		}
+		if report.Frozen > 0 || report.Skipped > 0 || report.Failed > 0 || len(report.AutoEnded) > 0 {
+			log.Printf("outgoing-schedule: account %s materialized %d sends, %d skipped, %d failed, %d ended",
+				accountID, report.Frozen, report.Skipped, report.Failed, len(report.AutoEnded))
+			h.publishMutation(accountID, "scheduled")
+		}
+		if err := h.db.ReconcileScheduleInstances(ctx, accountID); err != nil {
+			log.Printf("outgoing-schedule: reconcile account %s: %v", accountID, err)
+		}
+	}
 }
 
 func (h *Handler) prepareMigratedOutgoingSends(ctx context.Context) {

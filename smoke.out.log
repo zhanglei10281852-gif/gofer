@@ -1,0 +1,4 @@
+Gofer running on http://127.0.0.1:18099
+listening on 127.0.0.1:18099
+database: data/gofer.db
+auth: personal (application login: none)

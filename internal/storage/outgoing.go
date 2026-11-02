@@ -56,6 +56,7 @@ type OutgoingSend struct {
 	SendAfter           time.Time
 	NextAttemptAt       time.Time
 	IsScheduled         bool
+	ScheduleInstanceID  string
 	Status              string
 	AttemptCount        int
 	LastError           string
@@ -80,6 +81,7 @@ type OutgoingSendSummary struct {
 	SendAfter           time.Time
 	NextAttemptAt       time.Time
 	IsScheduled         bool
+	ScheduleInstanceID  string
 	Status              string
 	AttemptCount        int
 	LastError           string
@@ -105,6 +107,7 @@ type QueueOutgoingSendInput struct {
 	MessageJSON        []byte
 	SendAfter          time.Time
 	IsScheduled        bool
+	ScheduleInstanceID string
 }
 
 func (db *DB) QueueOutgoingSend(ctx context.Context, input QueueOutgoingSendInput) (OutgoingSend, error) {
@@ -131,8 +134,9 @@ func (db *DB) QueueOutgoingSend(ctx context.Context, input QueueOutgoingSendInpu
 		INSERT INTO outgoing_sends (
 			id, account_id, message_id, draft_id, transport, envelope_from,
 			envelope_recipients, mime_data, message_json, send_after, next_attempt_at, is_scheduled,
+			schedule_instance_id,
 			status, attempt_count, last_error, locked_at, sent_message_id
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '', NULL, '')
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '', NULL, '')
 		ON CONFLICT(message_id) DO UPDATE SET
 			account_id = excluded.account_id,
 			draft_id = excluded.draft_id,
@@ -144,6 +148,7 @@ func (db *DB) QueueOutgoingSend(ctx context.Context, input QueueOutgoingSendInpu
 			send_after = excluded.send_after,
 			next_attempt_at = excluded.next_attempt_at,
 			is_scheduled = excluded.is_scheduled,
+			schedule_instance_id = excluded.schedule_instance_id,
 			status = excluded.status,
 			attempt_count = 0,
 			last_error = '',
@@ -160,6 +165,7 @@ func (db *DB) QueueOutgoingSend(ctx context.Context, input QueueOutgoingSendInpu
 		WHERE outgoing_sends.status != ?`,
 		input.ID, input.AccountID, messageID, input.DraftID, input.Transport, input.EnvelopeFrom,
 		string(recipientsJSON), input.MIMEData, string(input.MessageJSON), input.SendAfter, time.Now().UTC(), input.IsScheduled,
+		input.ScheduleInstanceID,
 		OutgoingSendPending, OutgoingSendSending)
 	if err != nil {
 		return OutgoingSend{}, fmt.Errorf("queue outgoing send: %w", err)
@@ -620,13 +626,14 @@ func (db *DB) GetOutgoingSendSummaryForUser(ctx context.Context, userID, id stri
 
 const outgoingSendSelect = `SELECT id, account_id, message_id, draft_id, transport, envelope_from,
 	envelope_recipients, mime_data, message_json, send_after, next_attempt_at, is_scheduled,
+	schedule_instance_id,
 	status, attempt_count, last_error, sent_message_id,
 	sent_copy_status, sent_copy_attempt_count, sent_copy_last_error,
 	sent_copy_next_attempt_at, sent_copy_uid, sent_copy_uid_validity, created_at
 	FROM outgoing_sends`
 
 const outgoingSendSummarySelect = `SELECT os.id, os.account_id, COALESCE(os.message_id, 0), os.draft_id, os.transport,
-	os.send_after, os.next_attempt_at, os.is_scheduled, os.status, os.attempt_count, os.last_error,
+	os.send_after, os.next_attempt_at, os.is_scheduled, os.schedule_instance_id, os.status, os.attempt_count, os.last_error,
 	os.sent_copy_status, os.sent_copy_attempt_count, os.sent_copy_last_error, os.sent_copy_next_attempt_at,
 	os.sent_copy_uid, os.sent_copy_uid_validity, os.created_at, os.updated_at
 	FROM outgoing_sends os`
@@ -648,6 +655,7 @@ func scanOutgoingSend(row rowScanner) (OutgoingSend, error) {
 	if err := row.Scan(
 		&send.ID, &send.AccountID, &messageID, &send.DraftID, &send.Transport, &send.EnvelopeFrom,
 		&recipientsJSON, &send.MIMEData, &send.MessageJSON, &sendAfter, &nextAttemptAt, &scheduled,
+		&send.ScheduleInstanceID,
 		&send.Status, &send.AttemptCount, &send.LastError, &send.SentMessageID,
 		&send.SentCopyStatus, &send.SentCopyAttempts, &send.SentCopyLastError,
 		&sentCopyNextTry, &sentCopyUID, &sentCopyUIDValidity, &createdAt,
@@ -691,7 +699,7 @@ func scanOutgoingSendSummary(row rowScanner) (OutgoingSendSummary, error) {
 	var sentCopyUID, sentCopyUIDValidity int64
 	if err := row.Scan(
 		&summary.ID, &summary.AccountID, &summary.MessageID, &summary.DraftID, &summary.Transport,
-		&sendAfter, &nextAttempt, &scheduled, &summary.Status, &summary.AttemptCount, &summary.LastError,
+		&sendAfter, &nextAttempt, &scheduled, &summary.ScheduleInstanceID, &summary.Status, &summary.AttemptCount, &summary.LastError,
 		&summary.SentCopyStatus, &summary.SentCopyAttempts, &summary.SentCopyLastError, &sentCopyNext,
 		&sentCopyUID, &sentCopyUIDValidity, &createdAt, &updatedAt,
 	); err != nil {

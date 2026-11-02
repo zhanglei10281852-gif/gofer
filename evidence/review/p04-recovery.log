@@ -1,0 +1,47 @@
+=== RUN   TestQueueOutgoingSendAllowsMultipleScheduleInstances
+2026/11/02 12:36:05 schema initialized at version 134
+2026/11/02 12:36:05 storage: schema migration check complete
+2026/11/02 12:36:05 storage: threading backfill deferred to background startup worker
+--- PASS: TestQueueOutgoingSendAllowsMultipleScheduleInstances (0.11s)
+=== RUN   TestInterruptedOutgoingSendBecomesAmbiguousAndIsNotRetried
+2026/11/02 12:36:05 schema initialized at version 134
+2026/11/02 12:36:05 storage: schema migration check complete
+2026/11/02 12:36:05 storage: threading backfill deferred to background startup worker
+--- PASS: TestInterruptedOutgoingSendBecomesAmbiguousAndIsNotRetried (0.09s)
+=== RUN   TestPendingOutgoingSendSurvivesDatabaseRestart
+2026/11/02 12:36:05 schema initialized at version 134
+2026/11/02 12:36:05 storage: schema migration check complete
+2026/11/02 12:36:05 storage: threading backfill deferred to background startup worker
+2026/11/02 12:36:05 schema at version 134, no migration needed
+2026/11/02 12:36:05 storage: schema migration check complete
+2026/11/02 12:36:05 storage: threading backfill deferred to background startup worker
+--- PASS: TestPendingOutgoingSendSurvivesDatabaseRestart (0.13s)
+=== RUN   TestOutgoingSendAmbiguousRetryRequiresConfirmation
+2026/11/02 12:36:05 schema initialized at version 134
+2026/11/02 12:36:05 storage: schema migration check complete
+2026/11/02 12:36:05 storage: threading backfill deferred to background startup worker
+--- PASS: TestOutgoingSendAmbiguousRetryRequiresConfirmation (0.06s)
+=== RUN   TestUserBlobReferencesProtectScheduleContent
+2026/11/02 12:36:05 schema initialized at version 134
+2026/11/02 12:36:05 storage: schema migration check complete
+2026/11/02 12:36:05 storage: threading backfill deferred to background startup worker
+2026/11/02 12:36:05 schema initialized at version 134
+2026/11/02 12:36:05 storage: schema migration check complete
+2026/11/02 12:36:05 storage: threading backfill deferred to background startup worker
+2026/11/02 12:36:05 schema at version 134, no migration needed
+2026/11/02 12:36:05 storage: schema migration check complete
+2026/11/02 12:36:05 storage: threading backfill deferred to background startup worker
+--- PASS: TestUserBlobReferencesProtectScheduleContent (0.18s)
+=== RUN   TestUserBlobReferencesRejectMalformedScheduleContent
+2026/11/02 12:36:05 schema initialized at version 134
+2026/11/02 12:36:05 storage: schema migration check complete
+2026/11/02 12:36:05 storage: threading backfill deferred to background startup worker
+2026/11/02 12:36:05 schema initialized at version 134
+2026/11/02 12:36:05 storage: schema migration check complete
+2026/11/02 12:36:05 storage: threading backfill deferred to background startup worker
+2026/11/02 12:36:05 schema at version 134, no migration needed
+2026/11/02 12:36:05 storage: schema migration check complete
+2026/11/02 12:36:05 storage: threading backfill deferred to background startup worker
+--- PASS: TestUserBlobReferencesRejectMalformedScheduleContent (0.17s)
+PASS
+ok  	github.com/cristianadrielbraun/gofer/internal/storage	1.081s

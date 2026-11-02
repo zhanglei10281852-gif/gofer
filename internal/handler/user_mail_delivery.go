@@ -102,6 +102,11 @@ func (q *userMailDelivery) Run(ctx context.Context, owner, id string, providerMa
 	// has its own timer and follows actual delivery work, not every notification.
 	defer q.h.userIMAP.MaybeCleanupUserFiles(ctx, owner)
 	var failures error
+	// Freeze recurring-schedule occurrences due now; the send sweep below
+	// delivers their outgoing_sends rows in the same queue pass.
+	if err := s.materializeSchedules(ctx); err != nil {
+		return errors.Join(failures, err)
+	}
 	for _, run := range []func(context.Context) (bool, error){s.send, s.sentCopy, s.draft} {
 		if s.providerCoolingDown() {
 			return failures
@@ -515,6 +520,30 @@ func (s *userMailDeliveryScope) cacheSent(ctx context.Context, send storage.Outg
 	err = s.call(ctx, func(db *storage.DB) error { return db.PublishSentBody(ctx, id, s.id, msg.MessageID, p, text, html) })
 	committed = err == nil
 	return err
+}
+
+// materializeSchedules freezes due recurring-schedule occurrences inside the
+// account lease and mirrors delivery results onto their instances.
+func (s *userMailDeliveryScope) materializeSchedules(ctx context.Context) error {
+	return s.call(ctx, func(db *storage.DB) error {
+		builder := (&Handler{}).scheduleSendBuilder(s.cfg)
+		report, err := db.MaterializeDueScheduleInstances(ctx, s.id, time.Now(), builder)
+		if err != nil {
+			return err
+		}
+		if reconcileErr := db.ReconcileScheduleInstances(ctx, s.id); reconcileErr != nil {
+			return reconcileErr
+		}
+		if report.Frozen > 0 || report.Skipped > 0 || report.Failed > 0 || len(report.AutoEnded) > 0 {
+			s.runner.h.userIMAP.Events().Publish(mail.Event{
+				Type:      mail.EventMutation,
+				UserID:    s.owner,
+				AccountID: s.id,
+				FolderID:  "scheduled",
+			})
+		}
+		return nil
+	})
 }
 
 // providerCoolingDown reports whether a Gmail or Outlook account is waiting

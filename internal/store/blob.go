@@ -26,6 +26,11 @@ func NewBlobStore(basePath string) *BlobStore {
 	return &BlobStore{basePath: basePath, activity: &userFileActivities{owners: make(map[string]*userFileActivity)}}
 }
 
+// BasePath reports the blob store root.
+func (s *BlobStore) BasePath() string {
+	return s.basePath
+}
+
 func (s *BlobStore) msgDir(accountID string, localID int64) string {
 	return filepath.Join(s.basePath, accountID, "messages", fmt.Sprintf("%d", localID), s.messageVersion)
 }

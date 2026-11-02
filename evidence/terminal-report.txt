@@ -1,0 +1,42 @@
+GOFER project-04 | 按本地日历持续寄送同一份邮件
+题目 ID：cristianadrielbraun-gofer-46a7691f-fe32-4783-98a6-dea5a846706c
+完成度：部分完成 | 有效轮数：254 | 收录：长程题 | 超过两小时：是
+
+Rubric ID：1｜状态：通过｜期望行为：可创建每日或指定星期的重复寄信计划并查看下一日期；连续两个日期产生不同邮件身份，各自保留内容与结果，同一日期的重试复用原发送快照。｜实际观察：创建、星期筛选和两日期身份测试通过；重试复用已存 MIME｜直接
+证据：send_schedule.go:201–229；p04-additional.log / p04-recovery.log
+
+Rubric ID：2｜状态：通过｜期望行为：以固定时区验证夏令时缺失和重复本地时刻：缺失日期显示跳过，重复时刻仅发送一次，之后的发送仍按本地日历时刻推进。｜实际观察：纽约 02:30 缺失记 dst_gap；01:30 重复取 05:30Z；重复唤醒仍一封｜直接证据：recurr
+ence/recur.go:201–221；p04-targeted.log 的 DST 两用例
+
+Rubric ID：3｜状态：未通过｜期望行为：停机跨过多个计划日期后，恢复只补最近一个已到期日期，较早日期显示跳过；实例创建失败、重复唤醒或提交后重启均不重复创建同一日期的发送。｜实际观察：501 个到期日期得到 frozen=0、skipped=0、history=0，游标
+前移｜直接证据：TestReviewBacklog501Dates 连续三次相同；父取消回滚用例通过｜原因：积压501个日期时丢弃全部到期候选且不记录跳过｜影响：最近到期邮件未补发，500 个较早日期无跳过记录｜证据位置：internal/storage/send_schedule.go:780–784；review
+/p04-review-final.log
+
+Rubric ID：4｜状态：未通过｜期望行为：计划保存后编辑或删除原草稿、完成首次发送并运行常规附件清理，下一次发送仍包含计划保存的正文和附件，结束后按剩余实例引用释放文件。｜实际观察：201 次历史中最旧实例仍 pending；结束返回200但其附件已不存在
+｜直接证据：TestReviewEndPreservesOldPendingReference 连续三次 pending=1、file=false｜原因：结束计划只检查最近200次实例并删除旧待发实例引用的附件｜影响：仍有待处理引用时内容目录已被释放；常规引用保护未阻止此即时删除｜证据位置：internal/ha
+ndler/send_schedule.go:521–526；review/p04-review-final.log
+
+Rubric ID：5｜状态：通过｜期望行为：某次发送在提交前受到暂时拒绝时只重试该次且不漂移未来日期；DATA 提交后失去结果并重启时该次保持不确定、未经明确确认不自动重发，后续日期仍可独立执行。｜实际观察：重试保持 MIME 与下一日期；重启把 sending 转
+ ambiguous，自动领取为0｜直接证据：outgoing.go 的 claim/retry/recovery；p04-recovery.log；SMTP 超时分类测试
+
+Rubric ID：6｜状态：未通过｜期望行为：编辑、暂停或结束计划与后台生成实例交错时，已产生的实例维持原内容，变更生效后不按旧计划再产生实例；恢复计划不补发暂停期间的日期。｜实际观察：A提交→B提交→B清理→A清理后，B附件不存在；下一实例 failed=1｜
+直接证据：TestReviewInterleavedContentCleanupDeletesCurrentVersion 连续三次 frozen=0｜原因：交错内容编辑的旧清理删除当前版本附件导致下一实例创建失败｜影响：数据库保留 B 内容却丢失 B 附件，后续日期无法生成可投递快照｜证据位置：internal/han
+dler/send_schedule.go:648–655；internal/store/schedule_blob.go:134–154
+
+Rubric ID：7｜状态：未通过｜期望行为：刷新或重启后的计划详情准确区分各次待发、失败、不确定、已发送及已跳过结果，部分发送失败不能被计划的下一次日期或成功实例掩盖。｜实际观察：201 次历史含旧 failed；详情仅200次、visible_failed=0、unfinished
+=0｜直接证据：真实详情及实例处理器返回200；复现三次均隐藏旧失败｜原因：详情截断为最近200次并把旧失败实例排除在未完成计数外｜影响：刷新后不能查看或重试该旧失败，详情报告未完成数为0｜证据位置：internal/handler/send_schedule.go:361–411；inte
+rnal/storage/send_schedule.go:339–366
+
+Rubric ID：8｜状态：通过｜期望行为：关闭重复选项时即时发送和单次预约保持原行为，已有发件身份选择及 Sent 副本失败恢复不产生额外邮件或重复 SMTP 提交。｜实际观察：关闭重复仍单次入队；身份 SMTP 与 Sent 丢答恢复用例通过且只投递一次｜直接证据：
+p04-targeted.log / p04-additional.log；既有发送调用分支差异审计
+
+原始验证输出（本题模型产物；复盘验证不是模型重跑）
+go test -count=3 -v -timeout 90s -overlay evidence/review/overlay.json ./internal/storage ./internal/handler -run '^TestReview'
+zz_delivery_review_test.go:9: 501 due dates: frozen=0 skipped=0 history=0 cursor=2026-05-17
+zz_delivery_review_test.go:11: edit HTTP=200 frozen status=pending attachment exists=false
+zz_delivery_review_test.go:21: detail HTTP=200 actual_history=201 returned=200 visible_failed=0 reported_unfinished=0 reported_total=200
+zz_delivery_review_test.go:24: end HTTP=200 total=201 pending=1 pending_attachment_exists=false
+zz_delivery_review_test.go:33: A commit -> B commit -> B cleanup -> A cleanup: current_file_exists=false frozen=0 failed=1
+生产路径 send_schedule.go:780–784: considered>=500 => stoppedAt=today+1; due=nil
+生产路径 send_schedule.go:521–526: list(limit=200); unfinished==0 => DeleteSchedule
+生产路径 send_schedule.go:648–655: UpdateContent; DeleteScheduleVersionsExcept(newNonce)
